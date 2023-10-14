@@ -1,0 +1,5 @@
+# ignore binary file
+a.out
+
+# ignore maps
+maps/

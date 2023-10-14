@@ -1,0 +1,7 @@
+Map filename:maps/map.sus
+Song filename:maps/song.wav
+Offset:0
+
+Please put variables directly after : and end directly with a newline
+Don't mess with the first three lines in other ways
+Don't leave them empty, it will break most likely
