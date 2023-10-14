@@ -4,7 +4,7 @@ A Mania-type rhythm game made in assembly (WIP). AsmMania is built for Manjaro (
 To control, simply use the EFJI or DFJK keys for lanes 1, 2, 3, 4.
 
 # Compile
-To compile, simply use gcc and run the following command:
+To compile, simply use gcc and run the following command:\n
 `gcc -no-pie AsmMania.s time.s window.s render.s -lasound -lX11 -o AsmMania`
 This will create the executable names `AsmMania`
 
