@@ -8,5 +8,5 @@ To compile, simply use gcc and run the following command:
 
 `gcc -no-pie AsmMania.s time.s window.s render.s -lasound -lX11 -o AsmMania`
 
-This will create the executable names `AsmMania`
+This will create the executable named `AsmMania`
 
