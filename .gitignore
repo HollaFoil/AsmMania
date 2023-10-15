@@ -3,3 +3,6 @@ a.out
 
 # ignore maps
 maps/
+
+#ignore build
+/build
