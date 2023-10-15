@@ -1,7 +1,7 @@
 .global main
 
 format: .asciz "%ld\n"
-file: .asciz "./maps/song.wav"
+file: .asciz "maps/song.wav"
 
 /*
 -16(%rbp) = time since last frame in microseconds
@@ -62,15 +62,15 @@ main:
     leaq -328(%rbp), %rsi
     call create_pcm_handle
 
-    #leaq -336(%rbp), %rdi
-    #call load_config
-    #movq %rax, -368(%rbp)
+    leaq -336(%rbp), %rdi
+    call load_config
+    movq %rax, -368(%rbp)
 
-    movq $file, %rdi
-    leaq -356(%rbp), %rsi
-    call read_file
-    movq %rax, -344(%rbp)
-    movq $242, -360(%rbp)
+    #movq $file, %rdi
+    #leaq -356(%rbp), %rsi
+    #call read_file
+    #movq %rax, -344(%rbp)
+    #movq $242, -360(%rbp)
 
     leaq -24(%rbp), %rdi
     movq $0, %rsi
@@ -111,19 +111,6 @@ main:
         no_event:
 
         #Handle song
-        /*
-        movq -320(%rbp), %rdi
-        movq -360(%rbp), %r9
-        movq -344(%rbp), %r8
-        leaq (%r8, %r9, 1), %rsi
-        movq -328(%rbp), %rax
-        movq $4, %rdx
-        mulq %rdx
-        movq %rax, %rdx
-        addq %rax, -360(%rbp)
-        call snd_pcm_writei@PLT
-        */
-
         movq -320(%rbp), %rdi
         movq -344(%rbp), %rsi
         movq -360(%rbp), %r9
@@ -133,6 +120,7 @@ main:
         cmpq $-11, %rax # Error code -11, EAGAIN, driver not ready to accept new data
         je should_not_advance_song
         addq $4096, -360(%rbp)
+        
 
         should_not_advance_song:
 
