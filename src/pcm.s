@@ -5,10 +5,10 @@ DEFAULT_TYPE: .asciz "default"
 SONG: .asciz "b.wav"
 format: .asciz "%ld\n"
 
-#.global create_pcm_handle
-.global main
+.global create_pcm_handle
+#.global main
 
-main:
+create_pcm_handle:
     pushq %r12
     pushq %r13
     pushq %r14
