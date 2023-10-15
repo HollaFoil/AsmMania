@@ -2,29 +2,40 @@
 .equ CHANNELS, 2
 
 DEFAULT_TYPE: .asciz "default"
-SONG: .asciz "b.wav"
 format: .asciz "%ld\n"
 
-#.global create_pcm_handle
-.global main
+.global create_pcm_handle
+#.global main
 
-main:
-    pushq %r12
-    pushq %r13
-    pushq %r14
-    pushq %r15
+/*
+(%RDI) = pcm handle
+(%RSI) = frame (period, should be 1024)
+*/
+create_pcm_handle:
     pushq %rbp
     movq %rsp, %rbp
+    movq %r12, -72(%rbp)
+    movq %r13, -80(%rbp)
+    movq %r14, -88(%rbp)
+    movq %r15, -96(%rbp)
 
-    subq $48, %rsp
+
+    subq $96, %rsp
+
+    movq %rdi, -64(%rbp)
+    movq %rsi, -56(%rbp)
 
     leaq -40(%rbp), %rdi
     movq $DEFAULT_TYPE, %rsi
     movq $0, %rdx
-    movq $0, %rcx
+    movq $1, %rcx
     call snd_pcm_open@PLT
     movq $0, -48(%rbp)
     movl %eax, -48(%rbp)
+
+    movq -64(%rbp), %rdi
+    movq -40(%rbp), %rsi
+    movq %rsi, (%rdi)
 
     call snd_pcm_hw_params_sizeof@PLT
     leaq 8(%rax), %rdx
@@ -82,42 +93,16 @@ main:
     leaq -16(%rbp), %rsi
     movq $0, %rdx
     call snd_pcm_hw_params_get_period_size@PLT
+    movq -56(%rbp), %rdi
+    movq -16(%rbp), %rsi
+    movq %rsi, (%rdi)
 
-    movq $4096, -16(%rbp)
-
-    movq $SONG, %rdi
-    leaq -8(%rbp), %rsi
-    call read_file
-    movq %rax, %r12
-    movq $0, %r13
-
-    movq $0, %r14
-
-    loop:
-        movq $1024, %rdx
-        movq -40(%rbp), %rdi
-        leaq (%r12, %r13, 1), %rsi
-        addq $4096, %r13
-        call snd_pcm_writei@PLT
-
-        movq $format, %rdi
-        movq %rax, %rsi
-        movq $0, %rax
-
-        call printf
-
-        incq %r14
-        cmp %r13, -8(%rbp)
-        jl end
-
-
-        jmp loop
-    end:
+    movq -72(%rbp), %r12
+    movq -80(%rbp), %r13
+    movq -88(%rbp), %r14
+    movq -96(%rbp), %r15
 
     movq %rbp, %rsp
     popq %rbp
-    popq %r15
-    popq %r14
-    popq %r13
-    popq %r12
 ret
+

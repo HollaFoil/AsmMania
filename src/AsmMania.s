@@ -1,21 +1,35 @@
 .global main
 
-format: .asciz "%ld\n"   
+format: .asciz "%ld\n"
+file: .asciz "./maps/song.wav"
 
 /*
 -16(%rbp) = time since last frame in microseconds
 -24(%rbp) = time since last frame in seconds
+
 -32(%rbp) = display
 -40(%rbp) = window
 -48(%rbp) = gc
 -56(%rbp) = width
 -64(%rbp) = height
+
 -272(%rbp) = next event
+
 -280(%rbp) = lane1pressed
 -288(%rbp) = lane2pressed
 -296(%rbp) = lane3pressed
 -304(%rbp) = lane4pressed
--312(%rbp) = should clear frame
+
+-312(%rbp) = should clear frame (potentially unused)
+
+-320(%rbp) = pcm handle
+-328(%rbp) = frames (period)
+
+-336(%rbp) = no. hit objects (start of load_config.s)
+-344(%rbp) = pointer to song
+-352(%rbp) = size of song in bytes
+-360(%rbp) = song offset
+-368(%rbp) = pointer to hit obj
 */
 
 .text
@@ -31,7 +45,7 @@ main:
     pushq %rbp
     movq %rsp, %rbp
 
-    subq $320, %rsp
+    subq $480, %rsp
     movq $640, -56(%rbp)
     movq $900, -64(%rbp)
     leaq -48(%rbp), %rdi
@@ -44,10 +58,25 @@ main:
     movq $0, -296(%rbp)
     movq $0, -304(%rbp)
 
+    leaq -320(%rbp), %rdi
+    leaq -328(%rbp), %rsi
+    call create_pcm_handle
+
+    #leaq -336(%rbp), %rdi
+    #call load_config
+    #movq %rax, -368(%rbp)
+
+    movq $file, %rdi
+    leaq -356(%rbp), %rsi
+    call read_file
+    movq %rax, -344(%rbp)
+    movq $242, -360(%rbp)
+
     leaq -24(%rbp), %rdi
     movq $0, %rsi
     call gettimeofday
     loop:
+        # Handle events
         movq -32(%rbp), %rdi
         call XPending@PLT
         cmp $0, %rax
@@ -80,12 +109,39 @@ main:
         jne not_expose_event
         not_expose_event:
         no_event:
-        
+
+        #Handle song
+        /*
+        movq -320(%rbp), %rdi
+        movq -360(%rbp), %r9
+        movq -344(%rbp), %r8
+        leaq (%r8, %r9, 1), %rsi
+        movq -328(%rbp), %rax
+        movq $4, %rdx
+        mulq %rdx
+        movq %rax, %rdx
+        addq %rax, -360(%rbp)
+        call snd_pcm_writei@PLT
+        */
+
+        movq -320(%rbp), %rdi
+        movq -344(%rbp), %rsi
+        movq -360(%rbp), %r9
+        leaq (%rsi, %r9, 1), %rsi
+        movq $1024, %rdx
+        call snd_pcm_writei@PLT
+        cmpq $-11, %rax # Error code -11, EAGAIN, driver not ready to accept new data
+        je should_not_advance_song
+        addq $4096, -360(%rbp)
+
+        should_not_advance_song:
+
+
         leaq -24(%rbp), %rdi
         call time_since
         cmp $5000, %rax
         jl loop
-        
+
         movq $format, %rdi
         movq %rax, %rsi
         movq $0, %rax
@@ -113,7 +169,7 @@ main:
         leaq -48(%rbp), %rdi
         call draw_play_area
 
-        
+
         jmp loop
     end:
     movq %rbp, %rsp
@@ -209,3 +265,4 @@ handle_keyrelease_event:
     movq %rbp, %rsp
     popq %rbp
 ret
+
