@@ -4,5 +4,8 @@ a.out
 # ignore maps
 maps/
 
-#ignore build
-/build
+# ignore build
+build/
+
+# ignore config
+config.txt
