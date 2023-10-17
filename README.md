@@ -4,9 +4,7 @@ A Mania-type rhythm game made almost entirely in assembly (WIP). AsmMania is bui
 To control, simply use the EFJI or DFJK keys for lanes 1, 2, 3, 4.
 
 # Compile
-To compile, simply use gcc and run the following command:
+To compile, simply run `make` in the root folder of the repository.
 
-`gcc -no-pie AsmMania.s time.s window.s render.s -lasound -lX11 -o AsmMania`
-
-This will create the executable named `AsmMania`
+This will create the binary file named `AsmMania`
 
