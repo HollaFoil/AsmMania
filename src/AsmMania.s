@@ -81,9 +81,12 @@ main:
     call gettimeofday
 
     # add the preview time
-    movq -336(%rbp), %rdi
-    addq %rdi, -384(%rbp)
-    addq $5000000, -384(%rbp)
+    # convert miliseconds to microseconds
+    movq -336(%rbp), %rax
+    movq $1000, %rdi
+    mulq %rdi
+    addq %rax, -384(%rbp)
+    addq $50000000, -384(%rbp) # i dont know
 
     leaq -24(%rbp), %rdi
     movq $0, %rsi
@@ -170,7 +173,7 @@ main:
         call time_since # get time since start of map
         movq $0, %rdx 
         movq $1000, %rcx
-        divq %rcx
+        divq %rcx # convert microseconds to miliseconds
         movq %rax, %r14
         movq $0, %r15
         temp_hit_obj_loop:
