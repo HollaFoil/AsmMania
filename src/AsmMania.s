@@ -81,12 +81,14 @@ main:
     call gettimeofday
 
     # add the preview time
-    # convert miliseconds to microseconds
+    # convert miliseconds to seconds and microseconds
     movq -336(%rbp), %rax
+    movq $0, %rdx
     movq $1000, %rdi
+    divq %rdi
+    addq %rdx, -392(%rbp)
     mulq %rdi
     addq %rax, -384(%rbp)
-    addq $50000000, -384(%rbp) # i dont know
 
     leaq -24(%rbp), %rdi
     movq $0, %rsi
