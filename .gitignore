@@ -1,10 +1,7 @@
-# ignore binary file
-a.out
-
 # ignore maps
 maps/
 
-# ignore build
+# ignore build files
 build/
 
 # ignore config

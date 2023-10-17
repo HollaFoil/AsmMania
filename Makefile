@@ -3,13 +3,13 @@ objects = build/AsmMania.o build/render.o build/window.o build/pcm.o \
 .PHONY: clean
 
 AsmMania: $(objects)
-	$(CC) -no-pie -o "$@" $^ -lasound -lX11
+	$(CC) -no-pie -g -o "$@" $^ -lasound -lX11
 
 build:
 	mkdir build
 
 build/%.o: src/%.s | build
-	$(CC) -no-pie -c -o "$@" "$<"
+	$(CC) -no-pie -g -c -o "$@" "$<"
 
 clean:
 	rm -rf AsmMania build

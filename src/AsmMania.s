@@ -25,11 +25,16 @@ file: .asciz "maps/song.wav"
 -320(%rbp) = pcm handle
 -328(%rbp) = frames (period)
 
--336(%rbp) = song offset
--344(%rbp) = size of song in bytes
--352(%rbp) = pointer to song
--360(%rbp) = no. hit objects (start of load_config.s)
--368(%rbp) = pointer to hit obj
+-336(%rbp) = preview_time 
+-344(%rbp) = song offset
+-352(%rbp) = size of song in bytes
+-360(%rbp) = pointer to song
+-368(%rbp) = no. hit objects
+-376(%rbp) = pointer to hit obj
+
+-384(%rbp) = global time offset in microseconds
+-392(%rbp) = global time offset in seconds
+
 */
 
 .text
@@ -62,15 +67,23 @@ main:
     leaq -328(%rbp), %rsi
     call create_pcm_handle
 
-    leaq -360(%rbp), %rdi
+    leaq -368(%rbp), %rdi
     call load_config
-    movq %rax, -368(%rbp)
+    movq %rax, -376(%rbp)
 
     #movq $file, %rdi
     #leaq -356(%rbp), %rsi
     #call read_file
-    #movq %rax, -344(%rbp)
-    #movq $242, -360(%rbp)
+    #movq %rax, -360(%rbp)
+    #movq $242, -344(%rbp)
+    leaq -392(%rbp), %rdi
+    movq $0, %rsi
+    call gettimeofday
+
+    # add the preview time
+    movq -336(%rbp), %rdi
+    addq %rdi, -384(%rbp)
+    addq $5000000, -384(%rbp)
 
     leaq -24(%rbp), %rdi
     movq $0, %rsi
@@ -112,14 +125,14 @@ main:
 
         #Handle song
         movq -320(%rbp), %rdi
-        movq -352(%rbp), %rsi
-        movq -336(%rbp), %r9
+        movq -360(%rbp), %rsi
+        movq -344(%rbp), %r9
         leaq (%rsi, %r9, 1), %rsi
         movq $1024, %rdx
         call snd_pcm_writei@PLT
         cmpq $-11, %rax # Error code -11, EAGAIN, driver not ready to accept new data
         je should_not_advance_song
-        addq $4096, -336(%rbp)
+        addq $4096, -344(%rbp)
         
 
         should_not_advance_song:
@@ -133,7 +146,7 @@ main:
         movq $format, %rdi
         movq %rax, %rsi
         movq $0, %rax
-        call printf
+        #call printf
 
         leaq -24(%rbp), %rdi
         movq $0, %rsi
@@ -149,6 +162,50 @@ main:
         pushq $1
         call XClearArea@PLT
         addq $16, %rsp
+
+
+        pushq %r14
+        pushq %r15
+        leaq -392(%rbp), %rdi
+        call time_since # get time since start of map
+        movq $0, %rdx 
+        movq $1000, %rcx
+        divq %rcx
+        movq %rax, %r14
+        movq $0, %r15
+        temp_hit_obj_loop:
+        movq -376(%rbp), %rdi
+
+        movq $0, %rsi
+        movl (%rdi, %r15, 8), %esi # get lane of hit object
+
+        #movq $format, %rdi
+        #movq %rdx, %rsi
+        #movq $0, %rax
+        #call printf
+
+        movq -376(%rbp), %rdi
+
+        movq $0, %rsi
+        movl (%rdi, %r15, 8), %esi # get lane of hit object
+
+        movq $0, %rdx
+        movl 8(%rdi, %r15, 8), %edx # get time of hit object
+        subq %r14, %rdx
+        sar $1, %rdx
+
+        
+        
+        leaq -48(%rbp), %rdi # get window or smth
+        call draw_hit_object
+        addq $2, %r15
+        movq -368(%rbp), %rdi
+        shlq $1, %rdi
+        cmpq %r15, %rdi
+        jne temp_hit_obj_loop
+
+        popq %r15
+        popq %r14
 
         movq -280(%rbp), %rsi
         movq -288(%rbp), %rdx

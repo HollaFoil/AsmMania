@@ -9,6 +9,7 @@ config: .asciz "config.txt"
 # 8(%rdi) pointer to wav
 # 16(%rdi) size of wav in bytes
 # 24(%rdi) offset
+# 32(%rdi) preview_time
 
 
 load_config:
@@ -21,11 +22,12 @@ load_config:
     # -48(%rbp) pointer to allocated memory for hit objects
     # -56(%rbp) read_bytes for wav file
     # -64(%rbp) pointer to allocated memory for wav bytes
+    # -72(%rbp) preview_time
 
     pushq %rbp
     movq %rsp, %rbp
 
-    subq $64, %rsp
+    subq $80, %rsp
 
     movq %rdi, -8(%rbp)
 
@@ -47,7 +49,11 @@ load_config:
     call read_file
     testq %rax, %rax
     jz read_failed
+    movq (%rax), %rdi # copy the preview_time
+    movq %rdi, -72(%rbp)
+    addq $8, %rax # move the pointer to hit objects
     movq %rax, -48(%rbp)
+    
 
     # read the wav file and place it into memory
     movq -24(%rbp), %rdi
@@ -62,6 +68,7 @@ load_config:
     shr $4, %rax # 16 = 2^4 so just shift bits to the left by 4
     
     # finally return everything
+    
     movq -8(%rbp), %rdi # get the address of return struct
     movq %rax, (%rdi) # return number of hit objects
 
@@ -73,6 +80,9 @@ load_config:
 
     movq -32(%rbp), %rax
     movq %rax, 24(%rdi)
+
+    movq -72(%rbp), %rax
+    movq %rax, 32(%rdi)
 
     movq -48(%rbp), %rax
 
