@@ -25,10 +25,10 @@ file: .asciz "maps/song.wav"
 -320(%rbp) = pcm handle
 -328(%rbp) = frames (period)
 
--336(%rbp) = no. hit objects (start of load_config.s)
--344(%rbp) = pointer to song
--352(%rbp) = size of song in bytes
--360(%rbp) = song offset
+-336(%rbp) = song offset
+-344(%rbp) = size of song in bytes
+-352(%rbp) = pointer to song
+-360(%rbp) = no. hit objects (start of load_config.s)
 -368(%rbp) = pointer to hit obj
 */
 
@@ -62,7 +62,7 @@ main:
     leaq -328(%rbp), %rsi
     call create_pcm_handle
 
-    leaq -336(%rbp), %rdi
+    leaq -360(%rbp), %rdi
     call load_config
     movq %rax, -368(%rbp)
 
@@ -112,14 +112,14 @@ main:
 
         #Handle song
         movq -320(%rbp), %rdi
-        movq -344(%rbp), %rsi
-        movq -360(%rbp), %r9
+        movq -352(%rbp), %rsi
+        movq -336(%rbp), %r9
         leaq (%rsi, %r9, 1), %rsi
         movq $1024, %rdx
         call snd_pcm_writei@PLT
         cmpq $-11, %rax # Error code -11, EAGAIN, driver not ready to accept new data
         je should_not_advance_song
-        addq $4096, -360(%rbp)
+        addq $4096, -336(%rbp)
         
 
         should_not_advance_song:

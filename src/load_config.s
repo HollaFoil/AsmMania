@@ -6,9 +6,9 @@ config: .asciz "config.txt"
 # memory and returns a struct of 4 quadwords:
 # %rax pointer to a list of hit objects
 # (%rdi) number of hit objects
-# -8(%rdi) pointer to wav
-# -16(%rdi) size of wav in bytes
-# -24(%rdi) offset
+# 8(%rdi) pointer to wav
+# 16(%rdi) size of wav in bytes
+# 24(%rdi) offset
 
 
 load_config:
@@ -66,13 +66,13 @@ load_config:
     movq %rax, (%rdi) # return number of hit objects
 
     movq -64(%rbp), %rax
-    movq %rax, -8(%rdi)
+    movq %rax, 8(%rdi)
 
     movq -56(%rbp), %rax
-    movq %rax, -16(%rdi)
+    movq %rax, 16(%rdi)
 
     movq -32(%rbp), %rax
-    movq %rax, -24(%rdi)
+    movq %rax, 24(%rdi)
 
     movq -48(%rbp), %rax
 

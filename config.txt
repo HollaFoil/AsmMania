@@ -1,5 +1,5 @@
-Map filename:maps/map.sus
-Song filename:maps/song.wav
+Map filename:maps/camellia/WHAT_THE_CAT/map.sus
+Song filename:maps/camellia/WHAT_THE_CAT/audio.wav
 Offset:242
 
 Please put variables directly after : and end directly with a newline
