@@ -40,6 +40,8 @@ file: .asciz "maps/song.wav"
 -416       = lane 3 gradient (0 - 1000)
 -424       = lane 4 gradient (0 - 1000)
 
+-432       = first object to draw
+
 */
 
 .text
@@ -71,6 +73,8 @@ main:
     movq $0, -288(%rbp)
     movq $0, -296(%rbp)
     movq $0, -304(%rbp)
+
+    movq $0, -432(%rbp)
 
     movq $1000, -400(%rbp)
     movq $1000, -408(%rbp)
@@ -261,64 +265,42 @@ main:
         leaq -392(%rbp), %rdi
         call time_since # get time since start of map
 
-
-
-
         movq $0, %rdx 
         movq $1000, %rcx
-        divq %rcx # convert microseconds to miliseconds
+        idivq %rcx # convert microseconds to miliseconds
         movq %rax, %r14
 
-        movq $format, %rdi
-        movq %r14, %rsi
-        movq $0, %rax
-        call printf
-
-        movq $0, %r15
+        movq -432(%rbp), %r15
         temp_hit_obj_loop:
-        movq -376(%rbp), %rdi
+            movq -376(%rbp), %rdi
 
-        movq $0, %rsi
-        movl (%rdi, %r15, 8), %esi # get lane of hit object
+            movq $0, %rsi
+            movl (%rdi, %r15, 8), %esi # get lane of hit object
 
+            movq $0, %rdx
+            movl 8(%rdi, %r15, 8), %edx # get time of hit object
+            subq %r14, %rdx
 
-        movq $0, %rdx
-        movl 8(%rdi, %r15, 8), %edx # get time of hit object
+            cmpq $-2000, %rdx
+            jg keep_obj
+            addq $2, -432(%rbp)
+            jmp next_obj
+            keep_obj:
 
-        // pushq %rsi
-        // pushq %rdx
-        // movq $format, %rdi
-        // movq $0, %rax
-        // call printf
+            cmpq $2000, %rdx
+            jg end_hit_obj_drawing
+            
+            leaq -48(%rbp), %rdi # get window or smth
+            call draw_hit_object
 
-        // popq %rdx
-        // pushq %rdx
+            next_obj:
+            addq $2, %r15
+            movq -368(%rbp), %rdi
+            shlq $1, %rdi
 
-        // movq $format, %rdi
-        // movq %rdx, %rsi
-        // movq $0, %rax
-        // call printf
-
-        // popq %rdx
-        // popq %rsi
-        subq %r14, %rdx
-        sar $1, %rdx
-
-        
-        
-        leaq -48(%rbp), %rdi # get window or smth
-        call draw_hit_object
-        addq $2, %r15
-        movq -368(%rbp), %rdi
-        shlq $1, %rdi
-
-        cmpq $500, %r15
-        je aaa
-
-        cmpq %r15, %rdi
-        jne temp_hit_obj_loop
-        aaa:
-
+            cmpq %r15, %rdi
+            jne temp_hit_obj_loop
+        end_hit_obj_drawing:
 
         popq %r15
         popq %r14

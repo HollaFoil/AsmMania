@@ -14,14 +14,19 @@ time_since:
     call gettimeofday
     popq %rdi
     
-    movq (%rsp), %r8
-    movq (%rdi), %r10
+    movq $0, %r8
+    movq $0, %r9
+    movq $0, %r10
+    movq $0, %r11
+
+    movl (%rsp), %r8d
+    movl (%rdi), %r10d
 
     subq %r10, %r8
     movq %r8, %rax
     
-    movq 8(%rsp), %r9
-    movq 8(%rdi), %r11
+    movl 8(%rsp), %r9d
+    movl 8(%rdi), %r11d
 
     movq $1000000, %rdx
     mulq %rdx
