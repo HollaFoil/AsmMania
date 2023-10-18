@@ -35,6 +35,11 @@ file: .asciz "maps/song.wav"
 -384(%rbp) = global time offset in microseconds
 -392(%rbp) = global time offset in seconds
 
+-400       = lane 1 gradient (0 - 1000)
+-408       = lane 2 gradient (0 - 1000)
+-416       = lane 3 gradient (0 - 1000)
+-424       = lane 4 gradient (0 - 1000)
+
 */
 
 .text
@@ -44,6 +49,10 @@ file: .asciz "maps/song.wav"
 .equ KEY4, 31
 .equ KEY1ALTERNATE, 40
 .equ KEY4ALTERNATE, 45
+
+.equ FADE_OUT_SPEED, 50
+.equ FADE_IN_SPEED, 200
+.equ MAX_FADE, 1000
 
 
 main:
@@ -62,6 +71,11 @@ main:
     movq $0, -288(%rbp)
     movq $0, -296(%rbp)
     movq $0, -304(%rbp)
+
+    movq $1000, -400(%rbp)
+    movq $1000, -408(%rbp)
+    movq $1000, -416(%rbp)
+    movq $1000, -424(%rbp)
 
     leaq -320(%rbp), %rdi
     leaq -328(%rbp), %rsi
@@ -153,6 +167,72 @@ main:
         movq $0, %rax
         #call printf
 
+        # Handle fade animations by adding/subtracting values each frame depending on if button pressed
+        cmpq $1, -280(%rbp)
+        je lane1pressed
+        jmp lane1notpressed
+        lane1pressed:
+            addq $FADE_IN_SPEED, -400(%rbp)
+            cmpq $MAX_FADE, -400(%rbp)
+            jl nextlane_1
+            movq $MAX_FADE, -400(%rbp)
+            jmp nextlane_1
+        lane1notpressed:
+            subq $FADE_OUT_SPEED, -400(%rbp)
+            cmpq $0, -400(%rbp)
+            jg nextlane_1
+            movq $0, -400(%rbp)
+            jmp nextlane_1
+        nextlane_1:
+        cmpq $1, -288(%rbp)
+        je lane2pressed
+        jmp lane2notpressed
+        lane2pressed:
+            addq $FADE_IN_SPEED, -408(%rbp)
+            cmpq $MAX_FADE, -408(%rbp)
+            jl nextlane_2
+            movq $MAX_FADE, -408(%rbp)
+            jmp nextlane_2
+        lane2notpressed:
+            subq $FADE_OUT_SPEED, -408(%rbp)
+            cmpq $0, -408(%rbp)
+            jg nextlane_2
+            movq $0, -408(%rbp)
+            jmp nextlane_2
+        nextlane_2:
+        cmpq $1, -296(%rbp)
+        je lane3pressed
+        jmp lane3notpressed
+        lane3pressed:
+            addq $FADE_IN_SPEED, -416(%rbp)
+            cmpq $MAX_FADE, -416(%rbp)
+            jl nextlane_3
+            movq $MAX_FADE, -416(%rbp)
+            jmp nextlane_3
+        lane3notpressed:
+            subq $FADE_OUT_SPEED, -416(%rbp)
+            cmpq $0, -416(%rbp)
+            jg nextlane_3
+            movq $0, -416(%rbp)
+            jmp nextlane_3
+        nextlane_3:
+        cmpq $1, -304(%rbp)
+        je lane4pressed
+        jmp lane4notpressed
+        lane4pressed:
+            addq $FADE_IN_SPEED, -424(%rbp)
+            cmpq $MAX_FADE, -424(%rbp)
+            jl endlanes
+            movq $MAX_FADE, -424(%rbp)
+            jmp endlanes
+        lane4notpressed:
+            subq $FADE_OUT_SPEED, -424(%rbp)
+            cmpq $0, -424(%rbp)
+            jg endlanes
+            movq $0, -424(%rbp)
+            jmp endlanes
+        endlanes:
+
         leaq -24(%rbp), %rdi
         movq $0, %rsi
         call gettimeofday
@@ -168,6 +248,13 @@ main:
         call XClearArea@PLT
         addq $16, %rsp
 
+        movq -280(%rbp), %rsi
+        movq -288(%rbp), %rdx
+        movq -296(%rbp), %rcx
+        movq -304(%rbp), %r8
+        leaq -48(%rbp), %rdi
+        leaq -424(%rbp), %r9
+        call draw_play_area
 
         pushq %r14
         pushq %r15
@@ -184,10 +271,6 @@ main:
         movq $0, %rsi
         movl (%rdi, %r15, 8), %esi # get lane of hit object
 
-        #movq $format, %rdi
-        #movq %rdx, %rsi
-        #movq $0, %rax
-        #call printf
 
         movq -376(%rbp), %rdi
 
@@ -212,12 +295,6 @@ main:
         popq %r15
         popq %r14
 
-        movq -280(%rbp), %rsi
-        movq -288(%rbp), %rdx
-        movq -296(%rbp), %rcx
-        movq -304(%rbp), %r8
-        leaq -48(%rbp), %rdi
-        call draw_play_area
 
 
         jmp loop
