@@ -52,7 +52,7 @@ file: .asciz "maps/song.wav"
 
 .equ FADE_OUT_SPEED, 50
 .equ FADE_IN_SPEED, 200
-.equ MAX_FADE, 1000
+.equ MAX_FADE, 900
 
 
 main:

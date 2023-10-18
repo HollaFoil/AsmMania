@@ -3,7 +3,7 @@
 .equ LANE_WIDTH, 75
 .equ LANE_HEIGHT, 820
 .equ LANE_VISUAL_HEIGHT, 900
-.equ GRADIENT_HEIGHT_UP_TO, 650
+.equ GRADIENT_HEIGHT_UP_TO, 500
 .equ GRADIENT_DENOMINATOR, (LANE_VISUAL_HEIGHT - GRADIENT_HEIGHT_UP_TO)
 .equ TOP_LEFT_X, 150
 .equ TOP_LEFT_Y, 0
@@ -212,6 +212,8 @@ draw_play_area:
         mulq %rdi 
         movq $1000, %rdi
         divq %rdi
+        mulq %rax
+        divq %rdi
         movq %rax, %rdx
 
         movq $RB1, %rdi
@@ -279,6 +281,8 @@ draw_play_area:
         mulq %rdi 
         movq $1000, %rdi
         divq %rdi
+        mulq %rax
+        divq %rdi
         movq %rax, %rdx
 
         movq $RB2, %rdi
@@ -345,6 +349,8 @@ draw_play_area:
         mulq %rdi 
         movq $1000, %rdi
         divq %rdi
+        mulq %rax
+        divq %rdi
         movq %rax, %rdx
 
         movq $RB3, %rdi
@@ -410,6 +416,8 @@ draw_play_area:
         movq -128(%rbp), %rdi
         mulq %rdi 
         movq $1000, %rdi
+        divq %rdi
+        mulq %rax
         divq %rdi
         movq %rax, %rdx
 
