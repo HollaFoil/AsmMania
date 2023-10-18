@@ -600,15 +600,16 @@ draw_hit_object:
 
     subq $88, %rsp
 
-    movq %rsi, -40(%rbp) # lane of hit object
-    movq %rdx, -48(%rbp) # offset of hit object
+    movq %rsi, -64(%rbp) # lane of hit object
+    movq %rdx, -72(%rbp) # offset of hit object
+    movq %rcx, -80(%rbp) # offset of slider end, 0 if not slider
 
     movq (%rdi), %rax
-    movq %rax, -72(%rbp) # gc
+    movq %rax, -56(%rbp) # gc
     movq 8(%rdi), %rax
-    movq %rax, -64(%rbp) # window
+    movq %rax, -48(%rbp) # window
     movq 16(%rdi), %rax
-    movq %rax, -56(%rbp) # display
+    movq %rax, -40(%rbp) # display
 
     #1x offset
     movq $TOP_LEFT_X, %r12
@@ -628,8 +629,10 @@ draw_hit_object:
     addq $LANE_WIDTH, %r15
     addq $LANE_SEPARATOR_WIDTH, %r15
 
+    testl %ecx, %ecx
+    jnz slider_select
 
-    movq -40(%rbp), %rax
+    movq -64(%rbp), %rax
     cmpb $0, %al
     je first_lane
     cmpb $1, %al
@@ -640,21 +643,33 @@ draw_hit_object:
     je fourth_lane
     jmp error
 
+    slider_select:
+    movq -64(%rbp), %rax
+    cmpb $0, %al
+    je first_lane_slider
+    cmpb $1, %al
+    je second_lane_slider
+    cmpb $2, %al
+    je third_lane_slider
+    cmpb $3, %al
+    je fourth_lane_slider
+    jmp error
+
 
     first_lane:
-    movq	-56(%rbp), %rdi	
-    movq	-72(%rbp), %rsi	
+    movq	-40(%rbp), %rdi	
+    movq	-56(%rbp), %rsi	
 	movq	$16722641, %rdx	# White
 	call	XSetForeground@PLT
 
-    movq -56(%rbp), %rdi
-    movq -64(%rbp), %rsi
-    movq -72(%rbp), %rdx
+    movq -40(%rbp), %rdi
+    movq -48(%rbp), %rsi
+    movq -56(%rbp), %rdx
     movq $TOP_LEFT_X, %rcx
     addq $BORDER_WIDTH, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
-    subq -48(%rbp), %r8
+    subq -72(%rbp), %r8
     subq $BUTTON_HEIGHT, %r8
     movq $LANE_WIDTH, %r9
     movq $BUTTON_HEIGHT, %r10
@@ -663,19 +678,19 @@ draw_hit_object:
 
 
     second_lane:
-    movq	-56(%rbp), %rdi	
-    movq	-72(%rbp), %rsi	
+    movq	-40(%rbp), %rdi	
+    movq	-56(%rbp), %rsi	
 	movq	$16675841, %rdx	# White
 	call	XSetForeground@PLT
 
-    movq -56(%rbp), %rdi
-    movq -64(%rbp), %rsi
-    movq -72(%rbp), %rdx
+    movq -40(%rbp), %rdi
+    movq -48(%rbp), %rsi
+    movq -56(%rbp), %rdx
     movq %r12, %rcx
     #addq $BORDER_WIDTH, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
-    subq -48(%rbp), %r8
+    subq -72(%rbp), %r8
     subq $BUTTON_HEIGHT, %r8
     movq $LANE_WIDTH, %r9
     movq $BUTTON_HEIGHT, %r10
@@ -683,19 +698,19 @@ draw_hit_object:
     jmp finish_drawing
 
     third_lane:
-    movq	-56(%rbp), %rdi	
-    movq	-72(%rbp), %rsi	
+    movq	-40(%rbp), %rdi	
+    movq	-56(%rbp), %rsi	
 	movq	$14820704, %rdx	# White
 	call	XSetForeground@PLT
 
-    movq -56(%rbp), %rdi
-    movq -64(%rbp), %rsi
-    movq -72(%rbp), %rdx
+    movq -40(%rbp), %rdi
+    movq -48(%rbp), %rsi
+    movq -56(%rbp), %rdx
     movq %r13, %rcx
     #addq $BORDER_WIDTH, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
-    subq -48(%rbp), %r8
+    subq -72(%rbp), %r8
     subq $BUTTON_HEIGHT, %r8
     movq $LANE_WIDTH, %r9
     movq $BUTTON_HEIGHT, %r10
@@ -704,22 +719,108 @@ draw_hit_object:
 
 
     fourth_lane:
-    movq	-56(%rbp), %rdi	
-    movq	-72(%rbp), %rsi	
+    movq	-40(%rbp), %rdi	
+    movq	-56(%rbp), %rsi	
 	movq	$14303482, %rdx	# White
 	call	XSetForeground@PLT
 
-    movq -56(%rbp), %rdi
-    movq -64(%rbp), %rsi
-    movq -72(%rbp), %rdx
+    movq -40(%rbp), %rdi
+    movq -48(%rbp), %rsi
+    movq -56(%rbp), %rdx
     movq %r14, %rcx
     #addq $BORDER_WIDTH, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
-    subq -48(%rbp), %r8
+    subq -72(%rbp), %r8
     subq $BUTTON_HEIGHT, %r8
     movq $LANE_WIDTH, %r9
     movq $BUTTON_HEIGHT, %r10
+    pushq %r10
+    jmp finish_drawing
+
+    first_lane_slider:
+    movq	-40(%rbp), %rdi	
+    movq	-56(%rbp), %rsi	
+	movq	$16722641, %rdx	# White
+	call	XSetForeground@PLT
+
+    movq -40(%rbp), %rdi
+    movq -48(%rbp), %rsi
+    movq -56(%rbp), %rdx
+    movq $TOP_LEFT_X, %rcx
+    addq $BORDER_WIDTH, %rcx
+    movq $TOP_LEFT_Y, %r8
+    addq $LANE_HEIGHT, %r8
+    subq -72(%rbp), %r8
+    #subq $BUTTON_HEIGHT, %r8
+    movq $LANE_WIDTH, %r9
+    movq -80(%rbp), %r10
+    subq -72(%rbp), %r10
+    pushq %r10
+    jmp finish_drawing
+
+
+    second_lane_slider:
+    movq	-40(%rbp), %rdi	
+    movq	-56(%rbp), %rsi	
+	movq	$16675841, %rdx	# White
+	call	XSetForeground@PLT
+
+    movq -40(%rbp), %rdi
+    movq -48(%rbp), %rsi
+    movq -56(%rbp), %rdx
+    movq %r12, %rcx
+    #addq $BORDER_WIDTH, %rcx
+    movq $TOP_LEFT_Y, %r8
+    addq $LANE_HEIGHT, %r8
+    subq -72(%rbp), %r8
+    #subq $BUTTON_HEIGHT, %r8
+    movq $LANE_WIDTH, %r9
+    movq -80(%rbp), %r10
+    subq -72(%rbp), %r10
+    pushq %r10
+    jmp finish_drawing
+
+    third_lane_slider:
+    movq	-40(%rbp), %rdi	
+    movq	-56(%rbp), %rsi	
+	movq	$14820704, %rdx	# White
+	call	XSetForeground@PLT
+
+    movq -40(%rbp), %rdi
+    movq -48(%rbp), %rsi
+    movq -56(%rbp), %rdx
+    movq %r13, %rcx
+    #addq $BORDER_WIDTH, %rcx
+    movq $TOP_LEFT_Y, %r8
+    addq $LANE_HEIGHT, %r8
+    subq -72(%rbp), %r8
+    #subq $BUTTON_HEIGHT, %r8
+    movq $LANE_WIDTH, %r9
+    movq -80(%rbp), %r10
+    subq -72(%rbp), %r10
+    pushq %r10
+    jmp finish_drawing
+
+
+    fourth_lane_slider:
+    movq	-40(%rbp), %rdi	
+    movq	-56(%rbp), %rsi	
+	movq	$14303482, %rdx	# White
+	call	XSetForeground@PLT
+
+    movq -40(%rbp), %rdi
+    movq -48(%rbp), %rsi
+    movq -56(%rbp), %rdx
+    movq %r14, %rcx
+    #addq $BORDER_WIDTH, %rcx
+    movq $TOP_LEFT_Y, %r8
+    addq $LANE_HEIGHT, %r8
+    subq -72(%rbp), %r8
+    #subq $BUTTON_HEIGHT, %r8
+    movq $LANE_WIDTH, %r9
+    movq -80(%rbp), %r10
+    subq -72(%rbp), %r10
     pushq %r10
 
     finish_drawing:
