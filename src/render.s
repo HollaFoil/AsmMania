@@ -748,8 +748,8 @@ draw_hit_object:
     addq $BORDER_WIDTH, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
-    subq -72(%rbp), %r8
-    #subq $BUTTON_HEIGHT, %r8
+    subq -80(%rbp), %r8
+    subq $BUTTON_HEIGHT, %r8
     movq $LANE_WIDTH, %r9
     movq -80(%rbp), %r10
     subq -72(%rbp), %r10
@@ -769,8 +769,8 @@ draw_hit_object:
     movq %r12, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
-    subq -72(%rbp), %r8
-    #subq $BUTTON_HEIGHT, %r8
+    subq -80(%rbp), %r8
+    subq $BUTTON_HEIGHT, %r8
     movq $LANE_WIDTH, %r9
     movq -80(%rbp), %r10
     subq -72(%rbp), %r10
@@ -789,8 +789,8 @@ draw_hit_object:
     movq %r13, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
-    subq -72(%rbp), %r8
-    #subq $BUTTON_HEIGHT, %r8
+    subq -80(%rbp), %r8
+    subq $BUTTON_HEIGHT, %r8
     movq $LANE_WIDTH, %r9
     movq -80(%rbp), %r10
     subq -72(%rbp), %r10
@@ -810,8 +810,8 @@ draw_hit_object:
     movq %r14, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
-    subq -72(%rbp), %r8
-    #subq $BUTTON_HEIGHT, %r8
+    subq -80(%rbp), %r8
+    subq $BUTTON_HEIGHT, %r8
     movq $LANE_WIDTH, %r9
     movq -80(%rbp), %r10
     subq -72(%rbp), %r10
