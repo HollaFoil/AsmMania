@@ -753,6 +753,7 @@ draw_hit_object:
     movq $LANE_WIDTH, %r9
     movq -80(%rbp), %r10
     subq -72(%rbp), %r10
+    addq $BUTTON_HEIGHT, %r10
     pushq %r10
     jmp finish_drawing
 
@@ -774,6 +775,7 @@ draw_hit_object:
     movq $LANE_WIDTH, %r9
     movq -80(%rbp), %r10
     subq -72(%rbp), %r10
+    addq $BUTTON_HEIGHT, %r10
     pushq %r10
     jmp finish_drawing
 
@@ -794,6 +796,7 @@ draw_hit_object:
     movq $LANE_WIDTH, %r9
     movq -80(%rbp), %r10
     subq -72(%rbp), %r10
+    addq $BUTTON_HEIGHT, %r10
     pushq %r10
     jmp finish_drawing
 
@@ -815,6 +818,7 @@ draw_hit_object:
     movq $LANE_WIDTH, %r9
     movq -80(%rbp), %r10
     subq -72(%rbp), %r10
+    addq $BUTTON_HEIGHT, %r10
     pushq %r10
 
     finish_drawing:
