@@ -687,7 +687,6 @@ draw_hit_object:
     movq -48(%rbp), %rsi
     movq -56(%rbp), %rdx
     movq %r12, %rcx
-    #addq $BORDER_WIDTH, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
     subq -72(%rbp), %r8
@@ -707,7 +706,6 @@ draw_hit_object:
     movq -48(%rbp), %rsi
     movq -56(%rbp), %rdx
     movq %r13, %rcx
-    #addq $BORDER_WIDTH, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
     subq -72(%rbp), %r8
@@ -728,7 +726,6 @@ draw_hit_object:
     movq -48(%rbp), %rsi
     movq -56(%rbp), %rdx
     movq %r14, %rcx
-    #addq $BORDER_WIDTH, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
     subq -72(%rbp), %r8
@@ -770,7 +767,6 @@ draw_hit_object:
     movq -48(%rbp), %rsi
     movq -56(%rbp), %rdx
     movq %r12, %rcx
-    #addq $BORDER_WIDTH, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
     subq -72(%rbp), %r8
@@ -791,7 +787,6 @@ draw_hit_object:
     movq -48(%rbp), %rsi
     movq -56(%rbp), %rdx
     movq %r13, %rcx
-    #addq $BORDER_WIDTH, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
     subq -72(%rbp), %r8
@@ -813,7 +808,6 @@ draw_hit_object:
     movq -48(%rbp), %rsi
     movq -56(%rbp), %rdx
     movq %r14, %rcx
-    #addq $BORDER_WIDTH, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
     subq -72(%rbp), %r8
@@ -827,7 +821,8 @@ draw_hit_object:
 
     call XFillRectangle@PLT
 
-    leaq -32(%rbp), %rsp
+    # move the stack pointer to %r15-%r12 registers and pop them
+    leaq -32(%rbp), %rsp 
     popq %r15
     popq %r14
     popq %r13
@@ -836,7 +831,7 @@ draw_hit_object:
     popq %rbp
 ret
 
-error:
+error: # very valuable debug info
         movq $format, %rdi
         movq %rax, %rsi
         movq $0, %rax

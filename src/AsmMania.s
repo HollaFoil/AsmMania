@@ -271,7 +271,7 @@ main:
         movq %rax, %r14
 
         movq -432(%rbp), %r15
-        temp_hit_obj_loop:
+        hit_obj_loop:
             movq -376(%rbp), %rdi
 
             movq $0, %rsi
@@ -294,13 +294,12 @@ main:
             jmp next_obj
 
             regular_obj:
-
             cmpq $-2000, %rdx # check if obj is below screen
             jg keep_obj
             addq $2, -432(%rbp)
             jmp next_obj
-            keep_obj:
 
+            keep_obj:
             cmpq $2000, %rdx # check if object is above screen
             jg end_hit_obj_drawing
             
@@ -313,7 +312,7 @@ main:
             shlq $1, %rdi # multiply by 2
 
             cmpq %r15, %rdi
-            jne temp_hit_obj_loop
+            jne hit_obj_loop
         end_hit_obj_drawing:
 
         popq %r15
