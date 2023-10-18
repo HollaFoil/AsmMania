@@ -629,12 +629,6 @@ draw_hit_object:
     addq $LANE_SEPARATOR_WIDTH, %r15
 
 
-
-    movq	-56(%rbp), %rdi	
-    movq	-72(%rbp), %rsi	
-	movq	$16045097, %rdx
-	call	XSetForeground@PLT
-
     movq -40(%rbp), %rax
     cmpb $0, %al
     je first_lane

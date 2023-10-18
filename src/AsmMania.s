@@ -279,24 +279,38 @@ main:
 
             movq $0, %rdx
             movl 8(%rdi, %r15, 8), %edx # get time of hit object
-            subq %r14, %rdx
+            subq %r14, %rdx # get the offset
 
-            cmpq $-2000, %rdx
+            movq $0, %rcx
+            movl 4(%rdi, %r15, 8), %ecx # get if slider
+            testl %ecx, %ecx # look if slider
+            jz regular_obj # jump if not slider
+            
+            movl 12(%rdi, %r15, 8), %ecx # get slider time
+            subq %r14, %rcx # get offset
+            cmpq $-2000, %rcx # check if slider end is below screen
+            jg keep_obj
+            addq $2, -432(%rbp)
+            jmp next_obj
+
+            regular_obj:
+
+            cmpq $-2000, %rdx # check if obj is below screen
             jg keep_obj
             addq $2, -432(%rbp)
             jmp next_obj
             keep_obj:
 
-            cmpq $2000, %rdx
+            cmpq $2000, %rdx # check if object is above screen
             jg end_hit_obj_drawing
             
             leaq -48(%rbp), %rdi # get window or smth
             call draw_hit_object
 
             next_obj:
-            addq $2, %r15
-            movq -368(%rbp), %rdi
-            shlq $1, %rdi
+            addq $2, %r15 # increment the index by 2
+            movq -368(%rbp), %rdi # get number of objects
+            shlq $1, %rdi # multiply by 2
 
             cmpq %r15, %rdi
             jne temp_hit_obj_loop
