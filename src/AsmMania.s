@@ -96,13 +96,13 @@ main:
 
     # add the preview time
     # convert miliseconds to seconds and microseconds
-    movq -336(%rbp), %rax
-    movq $0, %rdx
-    movq $1000, %rdi
-    divq %rdi
-    addq %rdx, -392(%rbp)
-    mulq %rdi
-    addq %rax, -384(%rbp)
+    // movq -336(%rbp), %rax
+    // movq $0, %rdx
+    // movq $1000, %rdi
+    // divq %rdi
+    // addq %rdx, -392(%rbp)
+    //mulq %rdi
+    //addq %rax, -384(%rbp)
 
     leaq -24(%rbp), %rdi
     movq $0, %rsi
@@ -165,7 +165,7 @@ main:
         movq $format, %rdi
         movq %rax, %rsi
         movq $0, %rax
-        #call printf
+        call printf
 
         # Handle fade animations by adding/subtracting values each frame depending on if button pressed
         cmpq $1, -280(%rbp)
@@ -260,10 +260,20 @@ main:
         pushq %r15
         leaq -392(%rbp), %rdi
         call time_since # get time since start of map
+
+
+
+
         movq $0, %rdx 
         movq $1000, %rcx
         divq %rcx # convert microseconds to miliseconds
         movq %rax, %r14
+
+        movq $format, %rdi
+        movq %r14, %rsi
+        movq $0, %rax
+        call printf
+
         movq $0, %r15
         temp_hit_obj_loop:
         movq -376(%rbp), %rdi
@@ -272,13 +282,25 @@ main:
         movl (%rdi, %r15, 8), %esi # get lane of hit object
 
 
-        movq -376(%rbp), %rdi
-
-        movq $0, %rsi
-        movl (%rdi, %r15, 8), %esi # get lane of hit object
-
         movq $0, %rdx
         movl 8(%rdi, %r15, 8), %edx # get time of hit object
+
+        // pushq %rsi
+        // pushq %rdx
+        // movq $format, %rdi
+        // movq $0, %rax
+        // call printf
+
+        // popq %rdx
+        // pushq %rdx
+
+        // movq $format, %rdi
+        // movq %rdx, %rsi
+        // movq $0, %rax
+        // call printf
+
+        // popq %rdx
+        // popq %rsi
         subq %r14, %rdx
         sar $1, %rdx
 
@@ -289,12 +311,17 @@ main:
         addq $2, %r15
         movq -368(%rbp), %rdi
         shlq $1, %rdi
+
+        cmpq $500, %r15
+        je aaa
+
         cmpq %r15, %rdi
         jne temp_hit_obj_loop
+        aaa:
+
 
         popq %r15
         popq %r14
-
 
 
         jmp loop
