@@ -475,7 +475,7 @@ draw_play_area:
 
     movq	-72(%rbp), %rdi	
     movq	-88(%rbp), %rsi	
-	movq	$16745097, %rdx	# White
+	movq	$16765226, %rdx	# White
 	call	XSetForeground@PLT
 
     movq -72(%rbp), %rdi
@@ -659,7 +659,7 @@ draw_hit_object:
     first_lane:
     movq	-40(%rbp), %rdi	
     movq	-56(%rbp), %rsi	
-	movq	$16722641, %rdx	# White
+	movq	$16765226, %rdx	# White
 	call	XSetForeground@PLT
 
     movq -40(%rbp), %rdi
@@ -738,7 +738,7 @@ draw_hit_object:
     first_lane_slider:
     movq	-40(%rbp), %rdi	
     movq	-56(%rbp), %rsi	
-	movq	$16722641, %rdx	# White
+	movq	$16765226, %rdx	# White
 	call	XSetForeground@PLT
 
     movq -40(%rbp), %rdi
