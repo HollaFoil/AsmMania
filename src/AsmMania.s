@@ -1,7 +1,7 @@
 .global main
 
 format: .asciz "%ld\n"
-file: .asciz "maps/song.wav"
+file: .asciz "maps/sus.wav"
 
 /*
 -16(%rbp) = time since last frame in microseconds
@@ -42,6 +42,10 @@ file: .asciz "maps/song.wav"
 
 -432       = first object to draw
 
+-440(%rbp) = bytes
+-448(%rbp) = pointer to file
+
+
 */
 
 .text
@@ -61,7 +65,7 @@ main:
     pushq %rbp
     movq %rsp, %rbp
 
-    subq $480, %rsp
+    subq $448, %rsp
     movq $640, -56(%rbp)
     movq $900, -64(%rbp)
     leaq -48(%rbp), %rdi
@@ -89,6 +93,11 @@ main:
     call load_config
     movq %rax, -376(%rbp)
 
+    leaq -440(%rbp), %rsi
+    movq $file, %rdi
+    call read_file
+    movq %rax, -448(%rbp) # save address of sound bite
+
     #movq $file, %rdi
     #leaq -356(%rbp), %rsi
     #call read_file
@@ -107,6 +116,17 @@ main:
     // addq %rdx, -392(%rbp)
     //mulq %rdi
     //addq %rax, -384(%rbp)
+    movq $300, %rcx
+    movq -360(%rbp), %rdx
+    movq -440(%rbp), %rsi
+    movq -448(%rbp), %rdi
+    call play_sound_fx
+
+    movq $10000, %rcx
+    movq -360(%rbp), %rdx
+    movq -440(%rbp), %rsi
+    movq -448(%rbp), %rdi
+    call play_sound_fx
 
     leaq -24(%rbp), %rdi
     movq $0, %rsi
@@ -128,6 +148,12 @@ main:
 
         leaq -304(%rbp), %rsi
         call handle_keypress_event
+
+        #movq -344(%rbp), %rcx
+        #movq -360(%rbp), %rdx
+        #movq -440(%rbp), %rsi
+        #movq -448(%rbp), %rdi
+        #call play_sound_fx
         not_keypress_event:
 
         leaq -272(%rbp), %rdi
@@ -150,13 +176,12 @@ main:
         movq -320(%rbp), %rdi
         movq -360(%rbp), %rsi
         movq -344(%rbp), %r9
-        leaq (%rsi, %r9, 1), %rsi
+        addq %r9, %rsi
         movq $1024, %rdx
         call snd_pcm_writei@PLT
         cmpq $-11, %rax # Error code -11, EAGAIN, driver not ready to accept new data
         je should_not_advance_song
         addq $4096, -344(%rbp)
-        
 
         should_not_advance_song:
 
@@ -169,7 +194,7 @@ main:
         movq $format, %rdi
         movq %rax, %rsi
         movq $0, %rax
-        call printf
+        #call printf
 
         # Handle fade animations by adding/subtracting values each frame depending on if button pressed
         cmpq $1, -280(%rbp)
@@ -304,6 +329,8 @@ main:
             jg end_hit_obj_drawing
             
             leaq -48(%rbp), %rdi # get window or smth
+            #shlq $1, %rdx # doubled the speed
+            #shlq $1, %rcx # doubled the speed
             call draw_hit_object
 
             next_obj:
