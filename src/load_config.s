@@ -32,20 +32,20 @@ load_config:
     movq %rdi, -8(%rbp)
 
     # read the config file
-    movq $config, %rdi
     leaq -16(%rbp), %rsi
+    movq $config, %rdi
     call read_file
     testq %rax, %rax
     jz read_failed
 
     # decode the string
-    movq %rax, %rdi
     leaq -24(%rbp), %rsi
+    movq %rax, %rdi
     call decode_config
 
     # read the map file and place it into memory
-    movq %rax, %rdi
     leaq -40(%rbp), %rsi
+    movq %rax, %rdi
     call read_file
     testq %rax, %rax
     jz read_failed
@@ -56,8 +56,8 @@ load_config:
     
 
     # read the wav file and place it into memory
-    movq -24(%rbp), %rdi
     leaq -56(%rbp), %rsi
+    movq -24(%rbp), %rdi
     call read_file
     testq %rax, %rax
     jz read_failed

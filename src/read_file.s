@@ -7,13 +7,19 @@
 
 file_mode: .asciz "r"
 
-# stack:
-# -8(%rbp) BYTES_READ pointer
-# -16(%rbp) FILE pointer
-# -24(%rbp) file size
-# -32(%rbp) address of allocated buffer
+# arguments:
+# %rdi - string of file path and name
+# %rsi - address to return the bytes_read
+# output:
+# %rax - address to the allocated memory where the read contents of the file are
+# (%rsi) - the size of the file in bytes
 
 read_file:
+	# stack:
+	# -8(%rbp) BYTES_READ pointer
+	# -16(%rbp) FILE pointer
+	# -24(%rbp) file size
+	# -32(%rbp) address of allocated buffer
     pushq %rbp
     movq %rsp, %rbp
 
