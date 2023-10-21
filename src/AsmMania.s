@@ -96,13 +96,8 @@ main:
     leaq -440(%rbp), %rsi
     movq $file, %rdi
     call read_file
-    movq %rax, -448(%rbp) # save address of sound bite
+    movq %rax, -448(%rbp) # save address of sound fx
 
-    #movq $file, %rdi
-    #leaq -356(%rbp), %rsi
-    #call read_file
-    #movq %rax, -360(%rbp)
-    #movq $242, -344(%rbp)
     leaq -392(%rbp), %rdi
     movq $0, %rsi
     call gettimeofday
@@ -116,17 +111,21 @@ main:
     // addq %rdx, -392(%rbp)
     //mulq %rdi
     //addq %rax, -384(%rbp)
-    movq $300, %rcx
+
+    # 1 second of audio is about 176400 bytes
+    //////////////////////// # testing
+    movq -344(%rbp), %rcx
     movq -360(%rbp), %rdx
     movq -440(%rbp), %rsi
     movq -448(%rbp), %rdi
     call play_sound_fx
 
-    movq $10000, %rcx
+    movq $176400, %rcx
     movq -360(%rbp), %rdx
     movq -440(%rbp), %rsi
     movq -448(%rbp), %rdi
     call play_sound_fx
+    //////////////////////// 
 
     leaq -24(%rbp), %rdi
     movq $0, %rsi
@@ -149,11 +148,19 @@ main:
         leaq -304(%rbp), %rsi
         call handle_keypress_event
 
-        #movq -344(%rbp), %rcx
-        #movq -360(%rbp), %rdx
-        #movq -440(%rbp), %rsi
-        #movq -448(%rbp), %rdi
-        #call play_sound_fx
+        # prints the current offset of the buffer
+        movq -344(%rbp), %rsi
+        movq $format, %rdi
+        movq $0, %rax
+        call printf
+
+        # sound fx on keypress (doesnt work correctly when a key is held, also the buffer is to large so it plays after like 20s)
+        movq -344(%rbp), %rcx
+        movq -360(%rbp), %rdx
+        movq -440(%rbp), %rsi
+        movq -448(%rbp), %rdi
+        call play_sound_fx
+        
         not_keypress_event:
 
         leaq -272(%rbp), %rdi
