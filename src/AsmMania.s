@@ -25,6 +25,10 @@ file: .asciz "maps/sus.wav"
 -320(%rbp) = pcm handle
 -328(%rbp) = frames (period)
 
+wip
+-336(%rbp) = size of hit sound in bytes
+-344(%rpb) = pointer to hit sound
+
 -336(%rbp) = preview_time 
 -344(%rbp) = song offset
 -352(%rbp) = size of song in bytes
@@ -44,8 +48,6 @@ file: .asciz "maps/sus.wav"
 
 -440(%rbp) = bytes
 -448(%rbp) = pointer to file
-
--456(%rbp) = size of hw buffer
 
 
 */

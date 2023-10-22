@@ -10,7 +10,6 @@ format: .asciz "%ld\n"
 /*
 (%RDI) = pcm handle
 (%RSI) = frame (period, should be 1024)
--104(%rbp) = pointer to software settings
 */
 create_pcm_handle:
     pushq %rbp
@@ -19,7 +18,6 @@ create_pcm_handle:
     movq %r13, -80(%rbp)
     movq %r14, -88(%rbp)
     movq %r15, -96(%rbp)
-
 
     subq $112, %rsp
 
@@ -33,9 +31,6 @@ create_pcm_handle:
     call snd_pcm_open@PLT
     movq $0, -48(%rbp)
     movl %eax, -48(%rbp)
-
-    #leaq -104(%rbp), %rdi
-    #call snd_pcm_sw_params_malloc@PLT
 
     movq -64(%rbp), %rdi
     movq -40(%rbp), %rsi

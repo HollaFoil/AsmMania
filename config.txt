@@ -1,6 +1,7 @@
-Map filename:maps/map.sus
-Song filename:maps/audio.wav
+Map filepath:maps/map.sus
+Song filepath:maps/audio.wav
 Offset:242
+Hitsound filepath:maps/sus.wav
 
 Please put variables directly after : and end directly with a newline
 Don't mess with the first three lines in other ways
