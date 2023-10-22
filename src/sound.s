@@ -19,10 +19,10 @@ play_sound_fx:
     loop:
         movw (%rdi), %r8w
         
-        shlw %r8w # double the volume of hit sound
-        jno no_overflow_shifting
-        cmovncw %r10w, %r8w
-        cmovcw %r11w, %r8w
+        #shlw %r8w # double the volume of hit sound
+        #jno no_overflow_shifting
+        #cmovncw %r10w, %r8w
+        #cmovcw %r11w, %r8w
         no_overflow_shifting:
         movw (%rdx, %rcx, 1), %r9w
         #sarw $1, %r9w

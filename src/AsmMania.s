@@ -45,6 +45,8 @@ file: .asciz "maps/sus.wav"
 -440(%rbp) = bytes
 -448(%rbp) = pointer to file
 
+-456(%rbp) = size of hw buffer
+
 
 */
 
@@ -102,31 +104,6 @@ main:
     movq $0, %rsi
     call gettimeofday
 
-    # add the preview time
-    # convert miliseconds to seconds and microseconds
-    // movq -336(%rbp), %rax
-    // movq $0, %rdx
-    // movq $1000, %rdi
-    // divq %rdi
-    // addq %rdx, -392(%rbp)
-    //mulq %rdi
-    //addq %rax, -384(%rbp)
-
-    # 1 second of audio is about 176400 bytes
-    //////////////////////// # testing
-    movq -344(%rbp), %rcx
-    movq -360(%rbp), %rdx
-    movq -440(%rbp), %rsi
-    movq -448(%rbp), %rdi
-    call play_sound_fx
-
-    movq $176400, %rcx
-    movq -360(%rbp), %rdx
-    movq -440(%rbp), %rsi
-    movq -448(%rbp), %rdi
-    call play_sound_fx
-    //////////////////////// 
-
     leaq -24(%rbp), %rdi
     movq $0, %rsi
     call gettimeofday
@@ -148,19 +125,13 @@ main:
         leaq -304(%rbp), %rsi
         call handle_keypress_event
 
-        # prints the current offset of the buffer
-        movq -344(%rbp), %rsi
-        movq $format, %rdi
-        movq $0, %rax
-        call printf
-
-        # sound fx on keypress (doesnt work correctly when a key is held, also the buffer is to large so it plays after like 20s)
+        # sound fx on keypress (doesnt work correctly when a key is held)
         movq -344(%rbp), %rcx
         movq -360(%rbp), %rdx
         movq -440(%rbp), %rsi
         movq -448(%rbp), %rdi
         call play_sound_fx
-        
+
         not_keypress_event:
 
         leaq -272(%rbp), %rdi
@@ -184,11 +155,11 @@ main:
         movq -360(%rbp), %rsi
         movq -344(%rbp), %r9
         addq %r9, %rsi
-        movq $1024, %rdx
+        movq $256, %rdx
         call snd_pcm_writei@PLT
         cmpq $-11, %rax # Error code -11, EAGAIN, driver not ready to accept new data
         je should_not_advance_song
-        addq $4096, -344(%rbp)
+        addq $1024, -344(%rbp)
 
         should_not_advance_song:
 
@@ -198,6 +169,7 @@ main:
         cmp $5000, %rax
         jl loop
 
+        
         movq $format, %rdi
         movq %rax, %rsi
         movq $0, %rax

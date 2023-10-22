@@ -10,6 +10,7 @@ format: .asciz "%ld\n"
 /*
 (%RDI) = pcm handle
 (%RSI) = frame (period, should be 1024)
+-104(%rbp) = pointer to software settings
 */
 create_pcm_handle:
     pushq %rbp
@@ -20,7 +21,7 @@ create_pcm_handle:
     movq %r15, -96(%rbp)
 
 
-    subq $96, %rsp
+    subq $112, %rsp
 
     movq %rdi, -64(%rbp)
     movq %rsi, -56(%rbp)
@@ -32,6 +33,9 @@ create_pcm_handle:
     call snd_pcm_open@PLT
     movq $0, -48(%rbp)
     movl %eax, -48(%rbp)
+
+    #leaq -104(%rbp), %rdi
+    #call snd_pcm_sw_params_malloc@PLT
 
     movq -64(%rbp), %rdi
     movq -40(%rbp), %rsi
@@ -85,14 +89,34 @@ create_pcm_handle:
     movq $0, %rcx
     call snd_pcm_hw_params_set_rate_near@PLT
 
+    
+    movq $2048, -104(%rbp)
+    leaq -104(%rbp), %rdx
+    movq -32(%rbp), %rsi
+    movq -40(%rbp), %rdi
+    call snd_pcm_hw_params_set_buffer_size_near@PLT
+    movq -104(%rbp), %rsi
+    movq $format, %rdi
+    movq $0, %rax
+    call printf
+
+    movq $0, -112(%rbp)
+    movq $3, -104(%rbp)
+    leaq -112(%rbp), %rcx
+    leaq -104(%rbp), %rdx
+    movq -32(%rbp), %rsi
+    movq -40(%rbp), %rdi
+    call snd_pcm_hw_params_set_periods_near@PLT
+
+    movq -104(%rbp), %rsi
+    movq $format, %rdi
+    movq $0, %rax
+    call printf
+
     movq -32(%rbp), %rsi
     movq -40(%rbp), %rdi
     call snd_pcm_hw_params@PLT
 
-    movq -32(%rbp), %rdi
-    leaq -16(%rbp), %rsi
-    movq $0, %rdx
-    call snd_pcm_hw_params_get_period_size@PLT
     movq -56(%rbp), %rdi
     movq -16(%rbp), %rsi
     movq %rsi, (%rdi)
