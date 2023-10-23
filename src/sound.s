@@ -23,7 +23,7 @@ play_sound_fx:
         #jno no_overflow_shifting
         #cmovncw %r10w, %r8w
         #cmovcw %r11w, %r8w
-        no_overflow_shifting:
+        #no_overflow_shifting:
         movw (%rdx, %rcx, 1), %r9w
         #sarw $1, %r9w
         addw %r8w, %r9w

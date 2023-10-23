@@ -157,11 +157,11 @@ main:
         movq -360(%rbp), %rsi
         movq -344(%rbp), %r9
         addq %r9, %rsi
-        movq $256, %rdx
+        movq $1024, %rdx
         call snd_pcm_writei@PLT
         cmpq $-11, %rax # Error code -11, EAGAIN, driver not ready to accept new data
         je should_not_advance_song
-        addq $1024, -344(%rbp)
+        addq $4096, -344(%rbp)
 
         should_not_advance_song:
 
