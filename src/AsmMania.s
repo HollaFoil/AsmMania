@@ -504,7 +504,7 @@ RSI - previously pressed lanes (struct of 4 qw)
 RDX - hit object array address
 RCX - hit objects that have passed
 R8  - time since start of song (ms)
-R9  - text status
+R9  - text status address
 */
 handle_hit:
     pushq %r12
@@ -605,7 +605,7 @@ ret
 %RSI - curr lanes pressed
 %RDX - prev lanes pressed
 %RCX - delay
-(%r8) - text statys
+(%r8) - text status address
 */
 set_obj_status_to_hit:
     pushq %rbp
@@ -635,6 +635,7 @@ set_obj_status_to_hit:
     pushq %rdi
     pushq %rdi
 
+    # update text
     movq %r12, %rsi
     movq -8(%rbp), %rdi
     call set_text_state

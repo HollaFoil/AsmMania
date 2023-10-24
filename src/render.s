@@ -872,7 +872,6 @@ nice_end:
 ok: .asciz "Ok"
 ok_end:
 .equ ok_length, ok_end - ok - 1
-format2: .asciz "%ld %ld\n"
 # args:
 # %rdi - gc struct
 # (%rsi) - text_state
@@ -880,9 +879,7 @@ draw_text:
     pushq %rbp
     movq %rsp, %rbp
 
-    movq $0, %rdx
-    movl (%rsi), %edx
-    cmpl $0, %edx
+    cmpl $0, (%rsi)
     je dont_draw_text
 
     pushq (%rdi) # gc -8rbp
