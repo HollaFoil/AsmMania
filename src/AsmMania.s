@@ -25,7 +25,13 @@ file: .asciz "maps/sus.wav"
 -320(%rbp) = pcm handle
 -328(%rbp) = frames (period)
 
+
+
+
+
+
 wip
+-336(%rbp) = volume 0-15
 -336(%rbp) = size of hit sound in bytes
 -344(%rpb) = pointer to hit sound
 
