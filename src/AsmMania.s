@@ -53,6 +53,8 @@ wip
 
 -496       = first object to draw
 
+-504(%rbp) = text_state
+
 -520       = num of events
 
 
@@ -111,6 +113,8 @@ main:
     leaq -432(%rbp), %rdi
     call load_config
     movq %rax, -440(%rbp)
+
+    movq $0, -504(%rbp)
 
     leaq -456(%rbp), %rdi
     movq $0, %rsi
@@ -210,13 +214,14 @@ main:
         leaq -568(%rbp), %rsi
         movq -440(%rbp), %rdx
         movq -496(%rbp), %rcx
+        leaq -504(%rbp), %r9
         call handle_hit
+    
 
         leaq -24(%rbp), %rdi
         call time_since
         cmp $5000, %rax
         jl loop
-
         
         movq $format, %rdi
         movq %rax, %rsi
@@ -311,6 +316,10 @@ main:
         leaq -48(%rbp), %rdi
         leaq -488(%rbp), %r9
         call draw_play_area
+
+        leaq -504(%rbp), %rsi
+        leaq -48(%rbp), %rdi
+        call draw_text
 
         pushq %r14
         pushq %r15
@@ -495,6 +504,7 @@ RSI - previously pressed lanes (struct of 4 qw)
 RDX - hit object array address
 RCX - hit objects that have passed
 R8  - time since start of song (ms)
+R9  - text status
 */
 handle_hit:
     pushq %r12
@@ -510,6 +520,7 @@ handle_hit:
     movq %rdx, -24(%rbp)
     movq %rcx, -32(%rbp)
     movq %r8, -40(%rbp)
+    movq %r9, -48(%rbp)
 
     movq -24(%rbp), %rdi
     movq $0, %r9
@@ -567,7 +578,10 @@ handle_hit:
         movq -8(%rbp), %rsi
         movq -16(%rbp), %rdx
         movq %r13, %rcx
+        movq -48(%rbp), %r8
         call set_obj_status_to_hit
+
+        
         dont_set_status:
 
         popq %r9
@@ -591,10 +605,14 @@ ret
 %RSI - curr lanes pressed
 %RDX - prev lanes pressed
 %RCX - delay
+(%r8) - text statys
 */
 set_obj_status_to_hit:
     pushq %rbp
     movq %rsp, %rbp
+
+    pushq %r8
+    pushq %r8
 
     movq $0, %rax
     movl (%rdi), %eax
@@ -614,6 +632,16 @@ set_obj_status_to_hit:
     cmpq $0, %r9
     jne end_set_obj
 
+    pushq %rdi
+    pushq %rdi
+
+    movq %r12, %rsi
+    movq -8(%rbp), %rdi
+    call set_text_state
+
+    popq %rdi
+    popq %rdi
+
     movw 4(%rdi), %ax
     cmpw $1, %ax
     jne set_status_regular_obj
@@ -628,3 +656,39 @@ set_obj_status_to_hit:
     movq %rbp, %rsp
     popq %rbp
 ret
+
+
+# args:
+# (%rdi) - text_state obj
+# First 32 bits specify string
+# 0 - no text, 1 - Ok, 2 - Nice!, 3 - Perfect!, 4 - missed perhaps
+# Last 32 bits specify frames left to draw
+# %rsi - delay of keypress
+# 
+set_text_state:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    cmpq $8, %rsi
+    jle set_perfect
+    cmpq $60, %rsi
+    jle set_nice
+    
+    movq $1, %rsi
+    jmp end_set_text
+
+    set_nice:
+    movq $2, %rsi
+    jmp end_set_text
+
+    set_perfect:
+    movq $3, %rsi
+
+    end_set_text:
+    shlq $32, %rsi
+    addq $60, %rsi # how many frames to last
+    movq %rsi, (%rdi)
+
+    movq %rbp, %rsp
+    popq %rbp
+    ret

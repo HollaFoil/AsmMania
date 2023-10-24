@@ -46,6 +46,7 @@ format: .asciz "%ld\n"
 
 .global draw_play_area
 .global draw_hit_object
+.global draw_text
 
 
 
@@ -837,14 +838,6 @@ draw_hit_object:
     popq %rbp
 ret
 
-error: # very valuable debug info
-        movq $format, %rdi
-        movq %rax, %rsi
-        movq $0, %rax
-        call printf
-        movq $0, %rcx
-        divq %rcx
-
 
 /*
 rdi - val1
@@ -870,5 +863,98 @@ lerp:
 ret
 
 
+perfect: .asciz "Perfect!"
+perfect_end:
+.equ perfect_length, perfect_end - perfect - 1
+nice: .asciz "Nice!"
+nice_end:
+.equ nice_length, nice_end - nice - 1
+ok: .asciz "Ok"
+ok_end:
+.equ ok_length, ok_end - ok - 1
+format2: .asciz "%ld %ld\n"
+# args:
+# %rdi - gc struct
+# (%rsi) - text_state
+draw_text:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    movq $0, %rdx
+    movl (%rsi), %edx
+    cmpl $0, %edx
+    je dont_draw_text
+
+    pushq (%rdi) # gc -8rbp
+    pushq 8(%rdi) # wi -16
+    pushq 16(%rdi) # di -24
+
+    decl (%rsi)
+
+    cmpl $1, 4(%rsi)
+    je draw_ok
+    cmpl $2, 4(%rsi)
+    je draw_nice
+    cmpl $3, 4(%rsi)
+    je draw_perfect
+
+    draw_perfect:
+ 
+	movq $0x00ffff, %rdx	# Cyan
+    movq -8(%rbp), %rsi	
+    movq -24(%rbp), %rdi
+	call XSetForeground@PLT
+
+    pushq $perfect_length
+    movq $perfect, %r9
+    movq $LANE_HEIGHT, %r8
+    movq $500, %rcx
+    movq -8(%rbp), %rdx
+    movq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call XDrawImageString@PLT
+    addq $8, %rsp
+    jmp dont_draw_text
+
+    draw_nice:
+
+    movq $0x32cd32, %rdx	# Green
+    movq -8(%rbp), %rsi	
+    movq -24(%rbp), %rdi
+	call XSetForeground@PLT
+
+    pushq $nice_length
+    movq $nice, %r9
+    movq $LANE_HEIGHT, %r8
+    movq $500, %rcx
+    movq -8(%rbp), %rdx
+    movq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call XDrawImageString@PLT
+    addq $8, %rsp
+    jmp dont_draw_text
+
+    draw_ok:
+
+    movq $0xffff00, %rdx	# Yellow
+    movq -8(%rbp), %rsi	
+    movq -24(%rbp), %rdi
+	call XSetForeground@PLT
+
+    pushq $ok_length
+    movq $ok, %r9
+    movq $LANE_HEIGHT, %r8
+    movq $500, %rcx
+    movq -8(%rbp), %rdx
+    movq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call XDrawImageString@PLT
+    addq $8, %rsp
+    jmp dont_draw_text
+
+    dont_draw_text:
+    movq %rbp, %rsp
+    popq %rbp
+    ret
 
 
