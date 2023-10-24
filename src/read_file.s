@@ -10,6 +10,8 @@ file_mode: .asciz "r"
 # arguments:
 # %rdi - string of file path and name
 # %rsi - address to return the bytes_read
+# %rdx - offset
+# %rcx - alignment (default 1)
 # output:
 # %rax - address to the allocated memory where the read contents of the file are
 # (%rsi) - the size of the file in bytes
@@ -20,10 +22,15 @@ read_file:
 	# -16(%rbp) FILE pointer
 	# -24(%rbp) file size
 	# -32(%rbp) address of allocated buffer
+	# -40(%rbp) number of trailing bytes to add
+	# -48(%rbp) alignment (default 1)
     pushq %rbp
     movq %rsp, %rbp
 
-    subq $32, %rsp
+    subq $48, %rsp
+
+	movq %rdx, -40(%rbp)
+	movq %rcx, -48(%rbp)
 
     # save BYTES_READ address
     movq %rsi, -8(%rbp)
@@ -50,6 +57,13 @@ read_file:
 	je ftell_failed
 	movq %rax, -24(%rbp)
 
+	# set alignment
+	movq $0, %rdx
+	subq -40(%rbp), %rax
+	movq -48(%rbp), %rsi
+	divq %rsi
+	addq %rdx, -24(%rbp)
+
     # seek back to start
 	movq -16(%rbp), %rdi
 	movq $0, %rsi
@@ -59,9 +73,8 @@ read_file:
 	jnz fseek_failed
 
     # allocate memory and store pointer
-	# allocate file_size + 16 for a trailing null octaword (for reasons)
+	# allocate file_size
 	movq -24(%rbp), %rdi
-	addq $16, %rdi
 	call malloc
 	test %rax, %rax
 	jz malloc_failed
@@ -74,12 +87,21 @@ read_file:
 	movq -16(%rbp), %rcx
 	call fread
 	movq -8(%rbp), %rdi
-	movq %rax, (%rdi)
+	movq %rax, (%rdi) # return the bytes_read
 
-    # add a trailing null octaword
+    # add the trailing null bytes
+	movq -24(%rbp), %rsi
 	movq -32(%rbp), %rdi
-	movq $0, (%rdi, %rax)
-    movq $0, 8(%rdi, %rax)
+	subq %rax, %rsi
+	loop_null:
+		testq %rsi, %rsi
+		jz end_loop_null
+		movb $0, (%rdi, %rax)
+		incq %rax
+		decq %rsi
+		jmp loop_null
+
+	end_loop_null:
 
     # close file descriptor
 	movq -16(%rbp), %rdi

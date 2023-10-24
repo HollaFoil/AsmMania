@@ -13,60 +13,74 @@ config: .asciz "config.txt"
 # 40(%rdi) pointer to hit sound file in memory
 # 48(%rdi) size of hitsound wav file in bytes
 
-
 load_config:
     # stack:
     # -8(%rbp) pointer to return struct
-    # -16(%rbp) pointer to hitsound file name
-    # -24(%rbp) the offset
-    # -32(%rbp) pointer to song file name
-    # -40(%rbp) read_bytes for map file
-    # -48(%rbp) pointer to allocated memory for hit objects
-    # -56(%rbp) read_bytes for wav file
-    # -64(%rbp) pointer to allocated memory for music wav bytes
-    # -72(%rbp) preview_time
+    # -32(%rbp) volume
+    # -40(%rbp) pointer to hitsound file name
+    # -48(%rbp) the offset
+    # -56(%rbp) pointer to song file name
+    # -64(%rbp) read_bytes for map file
+    # -72(%rbp) pointer to allocated memory for hit objects
+    # -80(%rbp) read_bytes for song file
+    # -88(%rbp) pointer to allocated memory for music wav
+    # -96(%rbp) preview_time
+    # -104(%rbp) read_bytes for hit sound file
+    # -112(%rbp) pointer to allocated memory for hit sound wav 
 
     pushq %rbp
     movq %rsp, %rbp
 
-    subq $80, %rsp
+    subq $120, %rsp
 
     movq %rdi, -8(%rbp)
 
     # read the config file
-    leaq -16(%rbp), %rsi
+    movq $1, %rcx
+    movq $0, %rdx
+    leaq -64(%rbp), %rsi
     movq $config, %rdi
     call read_file
     testq %rax, %rax
     jz read_failed
 
     # decode the string
-    leaq -32(%rbp), %rsi
+    leaq -56(%rbp), %rsi
     movq %rax, %rdi
     call decode_config
 
     # read the map file and place it into memory
-    leaq -40(%rbp), %rsi
+    movq $1, %rcx
+    movq $0, %rdx
+    leaq -64(%rbp), %rsi
     movq %rax, %rdi
     call read_file
     testq %rax, %rax
     jz read_failed
     movq (%rax), %rdi # copy the preview_time
-    movq %rdi, -72(%rbp)
+    movq %rdi, -96(%rbp)
     addq $8, %rax # move the pointer to hit objects
-    movq %rax, -48(%rbp)
+    movq %rax, -72(%rbp)
     
-
-    # read the wav file and place it into memory
-    leaq -56(%rbp), %rsi
-    movq -32(%rbp), %rdi
+    # read the song.wav file and place it into memory
+    movq $512, %rcx
+    movq -48(%rbp), %rdx
+    leaq -80(%rbp), %rsi
+    movq -56(%rbp), %rdi
     call read_file
     testq %rax, %rax
     jz read_failed
-    movq %rax, -64(%rbp)
+    movq %rax, -88(%rbp)
+
+    movq $1, %rcx
+    movq $0, %rdx
+    leaq -104(%rbp), %rsi
+    movq -40(%rbp), %rdi
+    call read_file
+    movq %rax, -112(%rbp) # save address of sound fx
 
     # divide read_bytes of map file by 16 to get the number of hit objects
-    movq -40(%rbp), %rax
+    movq -64(%rbp), %rax
     shr $4, %rax # 16 = 2^4 so just shift bits to the left by 4
     
     # finally return everything
@@ -74,19 +88,25 @@ load_config:
     movq -8(%rbp), %rdi # get the address of return struct
     movq %rax, (%rdi) # return number of hit objects
 
-    movq -64(%rbp), %rax
+    movq -88(%rbp), %rax
     movq %rax, 8(%rdi)
 
-    movq -56(%rbp), %rax
+    movq -80(%rbp), %rax
     movq %rax, 16(%rdi)
 
-    movq -24(%rbp), %rax
+    movq -48(%rbp), %rax
     movq %rax, 24(%rdi)
 
-    movq -72(%rbp), %rax
+    movq -96(%rbp), %rax
     movq %rax, 32(%rdi)
 
-    movq -48(%rbp), %rax
+    movq -112(%rbp), %rax
+    movq %rax, 40(%rdi)
+
+    movq -104(%rbp), %rax
+    movq %rax, 48(%rdi)
+
+    movq -72(%rbp), %rax
 
     movq %rbp, %rsp
     popq %rbp
@@ -109,11 +129,12 @@ read_failed:
 # (%rsi) pointer to song file name
 # 8(%rsi) the offset
 # 16(%rsi) pointer to hitsound file name
+# 24(%rsi) volume
 decode_config:
-# stack:
-# -8(%rbp) stores arg %rsi
-# -16(%rbp) stores arg %rdi
-# -24(%rbp) stores pointer to map file name
+    # stack:
+    # -8(%rbp) stores arg %rsi
+    # -16(%rbp) stores arg %rdi
+    # -24(%rbp) stores pointer to map file name
     pushq %rbp
     movq %rsp, %rbp
 
@@ -129,15 +150,28 @@ decode_config:
     leaq -16(%rbp), %rdi
     call get_next_variable
     movq -8(%rbp), %rsi
-    movq %rax, (%rsi) # return the pointer to wav file name
+    movq %rax, (%rsi) # return the pointer to song file name
     
-    # get offset convert it to an integer
+    # get offset and convert it to an integer
     leaq -16(%rbp), %rdi
     call get_next_variable 
     movq %rax, %rdi
     call convert_string_to_int
     movq -8(%rbp), %rsi
     movq %rax, 8(%rsi) # return the offset
+
+    leaq -16(%rbp), %rdi
+    call get_next_variable
+    movq -8(%rbp), %rsi
+    movq %rax, 16(%rsi) # return the pointer to hit sound file name
+
+    # get volume and convert it to an integer
+    leaq -16(%rbp), %rdi
+    call get_next_variable 
+    movq %rax, %rdi
+    call convert_string_to_int
+    movq -8(%rbp), %rsi
+    movq %rax, 24(%rsi) # return the offset
 
     movq -24(%rbp), %rax # move map file pointer to %rax
     

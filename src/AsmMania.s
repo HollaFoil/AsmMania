@@ -33,40 +33,40 @@ file: .asciz "maps/sus.wav"
 
 
 wip
--336(%rbp) = volume 0-15
--336(%rbp) = size of hit sound in bytes
--344(%rpb) = pointer to hit sound
+-376(%rbp) = volume 0-100
+-384(%rbp) = size of hit sound in bytes
+-392(%rpb) = pointer to hit sound
 
--336(%rbp) = preview_time 
--344(%rbp) = song offset
--352(%rbp) = size of song in bytes
--360(%rbp) = pointer to song
--368(%rbp) = no. hit objects
--376(%rbp) = pointer to hit obj
+-400(%rbp) = preview_time 
+-408(%rbp) = song offset
+-416(%rbp) = size of song in bytes
+-424(%rbp) = pointer to song
+-432(%rbp) = no. hit objects
+-440(%rbp) = pointer to hit obj
 
--384(%rbp) = global time offset in microseconds
--392(%rbp) = global time offset in seconds
+-448(%rbp) = global time offset in microseconds
+-456(%rbp) = global time offset in seconds
 
--400       = lane 1 gradient (0 - 1000)
--408       = lane 2 gradient (0 - 1000)
--416       = lane 3 gradient (0 - 1000)
--424       = lane 4 gradient (0 - 1000)
+-464       = lane 1 gradient (0 - 1000)
+-472       = lane 2 gradient (0 - 1000)
+-480       = lane 3 gradient (0 - 1000)
+-488       = lane 4 gradient (0 - 1000)
 
--432       = first object to draw
+-496       = first object to draw
 
--440(%rbp) = bytes
--448(%rbp) = pointer to file
+-504(%rbp) = bytes
+-512(%rbp) = pointer to file
 
--456       = num of events
-
-
+-520       = num of events
 
 
 
--480       = lane1pressed old
--488       = lane2pressed old
--296       = lane3pressed old
--304       = lane4pressed old
+
+
+-544       = lane1pressed old
+-552       = lane2pressed old
+-560       = lane3pressed old
+-568       = lane4pressed old
 
 
 */
@@ -101,27 +101,22 @@ main:
     movq $0, -296(%rbp)
     movq $0, -304(%rbp)
 
-    movq $0, -432(%rbp)
+    movq $0, -496(%rbp)
 
-    movq $1000, -400(%rbp)
-    movq $1000, -408(%rbp)
-    movq $1000, -416(%rbp)
-    movq $1000, -424(%rbp)
+    movq $1000, -464(%rbp)
+    movq $1000, -472(%rbp)
+    movq $1000, -480(%rbp)
+    movq $1000, -488(%rbp)
 
     leaq -320(%rbp), %rdi
     leaq -328(%rbp), %rsi
     call create_pcm_handle
 
-    leaq -368(%rbp), %rdi
+    leaq -432(%rbp), %rdi
     call load_config
-    movq %rax, -376(%rbp)
+    movq %rax, -440(%rbp)
 
-    leaq -440(%rbp), %rsi
-    movq $file, %rdi
-    call read_file
-    movq %rax, -448(%rbp) # save address of sound fx
-
-    leaq -392(%rbp), %rdi
+    leaq -456(%rbp), %rdi
     movq $0, %rsi
     call gettimeofday
 
@@ -130,13 +125,13 @@ main:
     call gettimeofday
     loop:
         movq -280(%rbp), %rax
-        movq %rax, -480(%rbp)
+        movq %rax, -544(%rbp)
         movq -288(%rbp), %rax
-        movq %rax, -488(%rbp)
+        movq %rax, -552(%rbp)
         movq -296(%rbp), %rax
-        movq %rax, -496(%rbp)
+        movq %rax, -560(%rbp)
         movq -304(%rbp), %rax
-        movq %rax, -504(%rbp)
+        movq %rax, -568(%rbp)
 
         start_events:
         # Handle events
@@ -157,10 +152,10 @@ main:
             call handle_keypress_event
 
             # sound fx on keypress (doesnt work correctly when a key is held)
-            movq -344(%rbp), %rcx
-            movq -360(%rbp), %rdx
-            movq -440(%rbp), %rsi
-            movq -448(%rbp), %rdi
+            movq -408(%rbp), %rcx
+            movq -424(%rbp), %rdx
+            movq -384(%rbp), %rsi
+            movq -392(%rbp), %rdi
             call play_sound_fx
 
             not_keypress_event:
@@ -189,19 +184,26 @@ main:
         cmpq $32, %rax
         jl should_not_advance_song
 
+        # check if song has ended
+        movq -408(%rbp), %rdi
+        addq $512, %rdi
+        movq -416(%rbp), %rsi
+        cmpq %rdi, %rsi
+        # jl song_ended
+
         movq -320(%rbp), %rdi
-        movq -360(%rbp), %rsi
-        movq -344(%rbp), %r9
+        movq -424(%rbp), %rsi
+        movq -408(%rbp), %r9
         addq %r9, %rsi
         movq $128, %rdx
         call snd_pcm_writei@PLT
         cmpq $-11, %rax # Error code -11, EAGAIN, driver not ready to accept new data
         je should_not_advance_song
-        addq $512, -344(%rbp)
+        addq $512, -408(%rbp)
 
         should_not_advance_song:
 
-        leaq -392(%rbp), %rdi
+        leaq -456(%rbp), %rdi
         call time_since 
         movq $0, %rdx 
         movq $1000, %rcx
@@ -209,9 +211,9 @@ main:
         movq %rax, %r8
 
         leaq -304(%rbp), %rdi
-        leaq -504(%rbp), %rsi
-        movq -376(%rbp), %rdx
-        movq -432(%rbp), %rcx
+        leaq -568(%rbp), %rsi
+        movq -440(%rbp), %rdx
+        movq -496(%rbp), %rcx
         call handle_hit
 
         leaq -24(%rbp), %rdi
@@ -230,64 +232,64 @@ main:
         je lane1pressed
         jmp lane1notpressed
         lane1pressed:
-            addq $FADE_IN_SPEED, -400(%rbp)
-            cmpq $MAX_FADE, -400(%rbp)
+            addq $FADE_IN_SPEED, -464(%rbp)
+            cmpq $MAX_FADE, -464(%rbp)
             jl nextlane_1
-            movq $MAX_FADE, -400(%rbp)
+            movq $MAX_FADE, -464(%rbp)
             jmp nextlane_1
         lane1notpressed:
-            subq $FADE_OUT_SPEED, -400(%rbp)
-            cmpq $0, -400(%rbp)
+            subq $FADE_OUT_SPEED, -464(%rbp)
+            cmpq $0, -464(%rbp)
             jg nextlane_1
-            movq $0, -400(%rbp)
+            movq $0, -464(%rbp)
             jmp nextlane_1
         nextlane_1:
         cmpq $1, -288(%rbp)
         je lane2pressed
         jmp lane2notpressed
         lane2pressed:
-            addq $FADE_IN_SPEED, -408(%rbp)
-            cmpq $MAX_FADE, -408(%rbp)
+            addq $FADE_IN_SPEED, -472(%rbp)
+            cmpq $MAX_FADE, -472(%rbp)
             jl nextlane_2
-            movq $MAX_FADE, -408(%rbp)
+            movq $MAX_FADE, -472(%rbp)
             jmp nextlane_2
         lane2notpressed:
-            subq $FADE_OUT_SPEED, -408(%rbp)
-            cmpq $0, -408(%rbp)
+            subq $FADE_OUT_SPEED, -472(%rbp)
+            cmpq $0, -472(%rbp)
             jg nextlane_2
-            movq $0, -408(%rbp)
+            movq $0, -472(%rbp)
             jmp nextlane_2
         nextlane_2:
         cmpq $1, -296(%rbp)
         je lane3pressed
         jmp lane3notpressed
         lane3pressed:
-            addq $FADE_IN_SPEED, -416(%rbp)
-            cmpq $MAX_FADE, -416(%rbp)
+            addq $FADE_IN_SPEED, -480(%rbp)
+            cmpq $MAX_FADE, -480(%rbp)
             jl nextlane_3
-            movq $MAX_FADE, -416(%rbp)
+            movq $MAX_FADE, -480(%rbp)
             jmp nextlane_3
         lane3notpressed:
-            subq $FADE_OUT_SPEED, -416(%rbp)
-            cmpq $0, -416(%rbp)
+            subq $FADE_OUT_SPEED, -480(%rbp)
+            cmpq $0, -480(%rbp)
             jg nextlane_3
-            movq $0, -416(%rbp)
+            movq $0, -480(%rbp)
             jmp nextlane_3
         nextlane_3:
         cmpq $1, -304(%rbp)
         je lane4pressed
         jmp lane4notpressed
         lane4pressed:
-            addq $FADE_IN_SPEED, -424(%rbp)
-            cmpq $MAX_FADE, -424(%rbp)
+            addq $FADE_IN_SPEED, -488(%rbp)
+            cmpq $MAX_FADE, -488(%rbp)
             jl endlanes
-            movq $MAX_FADE, -424(%rbp)
+            movq $MAX_FADE, -488(%rbp)
             jmp endlanes
         lane4notpressed:
-            subq $FADE_OUT_SPEED, -424(%rbp)
-            cmpq $0, -424(%rbp)
+            subq $FADE_OUT_SPEED, -488(%rbp)
+            cmpq $0, -488(%rbp)
             jg endlanes
-            movq $0, -424(%rbp)
+            movq $0, -488(%rbp)
             jmp endlanes
         endlanes:
 
@@ -311,12 +313,12 @@ main:
         movq -296(%rbp), %rcx
         movq -304(%rbp), %r8
         leaq -48(%rbp), %rdi
-        leaq -424(%rbp), %r9
+        leaq -488(%rbp), %r9
         call draw_play_area
 
         pushq %r14
         pushq %r15
-        leaq -392(%rbp), %rdi
+        leaq -456(%rbp), %rdi
         call time_since # get time since start of map
 
         movq $0, %rdx 
@@ -324,9 +326,9 @@ main:
         divq %rcx # convert microseconds to miliseconds
         movq %rax, %r14
 
-        movq -432(%rbp), %r15
+        movq -496(%rbp), %r15
         hit_obj_loop:
-            movq -376(%rbp), %rdi
+            movq -440(%rbp), %rdi
 
             movq $0, %rsi
             movw 6(%rdi, %r15, 8), %si # skip if status = 1 (object hit)
@@ -359,13 +361,13 @@ main:
             subq %r14, %rcx # get offset
             cmpq $-2000, %rcx # check if slider end is below screen
             jg keep_obj
-            addq $2, -432(%rbp)
+            addq $2, -496(%rbp)
             jmp next_obj
 
             regular_obj:
             cmpq $-2000, %rdx # check if obj is below screen
             jg keep_obj
-            addq $2, -432(%rbp)
+            addq $2, -496(%rbp)
             jmp next_obj
 
             keep_obj:
@@ -379,7 +381,7 @@ main:
 
             next_obj:
             addq $2, %r15 # increment the index by 2
-            movq -368(%rbp), %rdi # get number of objects
+            movq -432(%rbp), %rdi # get number of objects
             shlq $1, %rdi # multiply by 2
 
             cmpq %r15, %rdi

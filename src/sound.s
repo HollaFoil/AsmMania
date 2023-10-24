@@ -1,4 +1,5 @@
 .global play_sound_fx
+.global set_hit_sound_volume
 
 # arguments:
 # %rdi: sound fx address
@@ -18,14 +19,7 @@ play_sound_fx:
     # adds the sound waves
     loop:
         movw (%rdi), %r8w
-        
-        #shlw %r8w # double the volume of hit sound
-        #jno no_overflow_shifting
-        #cmovncw %r10w, %r8w
-        #cmovcw %r11w, %r8w
-        #no_overflow_shifting:
         movw (%rdx, %rcx, 1), %r9w
-        #sarw $1, %r9w
         addw %r8w, %r9w
         jno no_overflow
         andw $0x8000, %r8w # get the sign bit
@@ -37,6 +31,24 @@ play_sound_fx:
         addq $2, %rdi
         subq $2, %rsi
         jg loop
+
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
+# arguments:
+# %rdi: sound fx address
+# %rsi: sound fx size in bytes
+# %rdx: volume
+set_hit_sound_volume:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    #shlw %r8w # double the volume of hit sound
+    #jno no_overflow_shifting
+    #cmovncw %r10w, %r8w
+    #cmovcw %r11w, %r8w
+    #no_overflow_shifting:
 
     movq %rbp, %rsp
     popq %rbp
