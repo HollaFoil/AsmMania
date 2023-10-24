@@ -79,13 +79,17 @@ load_config:
     call read_file
     movq %rax, -112(%rbp) # save address of sound fx
 
+    movq -32(%rbp), %rdx
+    movq -104(%rbp), %rsi
+    movq -112(%rbp), %rdi
+    call set_hit_sound_volume
+
+    # finally return everything
+    movq -8(%rbp), %rdi # get the address of return struct
+
     # divide read_bytes of map file by 16 to get the number of hit objects
     movq -64(%rbp), %rax
     shr $4, %rax # 16 = 2^4 so just shift bits to the left by 4
-    
-    # finally return everything
-    
-    movq -8(%rbp), %rdi # get the address of return struct
     movq %rax, (%rdi) # return number of hit objects
 
     movq -88(%rbp), %rax

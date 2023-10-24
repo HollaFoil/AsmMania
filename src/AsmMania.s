@@ -54,9 +54,6 @@ wip
 
 -496       = first object to draw
 
--504(%rbp) = bytes
--512(%rbp) = pointer to file
-
 -520       = num of events
 
 

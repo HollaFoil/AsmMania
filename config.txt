@@ -2,7 +2,7 @@ Map filepath:maps/map.sus
 Song filepath:maps/audio.wav
 Song offset:242
 Hitsound filepath:maps/sus.wav
-Hitsound volume 0-100:100
+Hitsound volume 0-100:15
 
 Please put variables directly after : and end directly with a newline
 Don't mess with the first three lines in other ways

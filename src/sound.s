@@ -17,7 +17,7 @@ play_sound_fx:
     movw $0x8001, %r11w # INT_MIN
 
     # adds the sound waves
-    loop:
+    loop_overlay:
         movw (%rdi), %r8w
         movw (%rdx, %rcx, 1), %r9w
         addw %r8w, %r9w
@@ -30,7 +30,7 @@ play_sound_fx:
         addq $2, %rcx
         addq $2, %rdi
         subq $2, %rsi
-        jg loop
+        jg loop_overlay
 
     movq %rbp, %rsp
     popq %rbp
@@ -44,11 +44,16 @@ set_hit_sound_volume:
     pushq %rbp
     movq %rsp, %rbp
 
-    #shlw %r8w # double the volume of hit sound
-    #jno no_overflow_shifting
-    #cmovncw %r10w, %r8w
-    #cmovcw %r11w, %r8w
-    #no_overflow_shifting:
+    movq %rdx, %rcx
+    movw $100, %r9w
+    loop_volume:
+        movw (%rdi), %ax
+        imulw %cx
+        idivw %r9w
+        movw %ax, (%rdi)
+        addq $2, %rdi
+        subq $2, %rsi
+        jg loop_volume
 
     movq %rbp, %rsp
     popq %rbp
