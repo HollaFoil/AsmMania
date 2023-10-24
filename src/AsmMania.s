@@ -3,7 +3,6 @@
 format: .asciz "%ld\n"
 format2: .asciz "%ld %ld\n"
 format3: .asciz "%ld %ld %ld\n"
-file: .asciz "maps/sus.wav"
 
 /* RESERVED STACK SPACE = 640 BYTES
 -16(%rbp) = time since last frame in microseconds
@@ -390,7 +389,12 @@ main:
 
 
         jmp loop
+
     end:
+    movq -320(%rbp), %rdi
+    call snd_pcm_drain@PLT
+    movq -320(%rbp), %rdi
+    call snd_pcm_close@PLT
     movq %rbp, %rsp
     popq %rbp
 
