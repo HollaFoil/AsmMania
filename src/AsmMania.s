@@ -186,7 +186,7 @@ main:
         addq $512, %rdi
         movq -416(%rbp), %rsi
         cmpq %rdi, %rsi
-        # jl song_ended
+        jl end
 
         movq -320(%rbp), %rdi
         movq -424(%rbp), %rsi
@@ -395,7 +395,7 @@ main:
     popq %rbp
 
     movq $0, %rdi
-call exit
+    call exit
 
 
 /*
