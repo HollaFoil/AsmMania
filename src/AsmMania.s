@@ -1,9 +1,11 @@
 .global main
 
 format: .asciz "%ld\n"
+format2: .asciz "%ld %ld\n"
+format3: .asciz "%ld %ld %ld\n"
 file: .asciz "maps/sus.wav"
 
-/*
+/* RESERVED STACK SPACE = 640 BYTES
 -16(%rbp) = time since last frame in microseconds
 -24(%rbp) = time since last frame in seconds
 
@@ -55,6 +57,17 @@ wip
 -440(%rbp) = bytes
 -448(%rbp) = pointer to file
 
+-456       = num of events
+
+
+
+
+
+-480       = lane1pressed old
+-488       = lane2pressed old
+-296       = lane3pressed old
+-304       = lane4pressed old
+
 
 */
 
@@ -75,7 +88,7 @@ main:
     pushq %rbp
     movq %rsp, %rbp
 
-    subq $448, %rsp
+    subq $640, %rsp
     movq $640, -56(%rbp)
     movq $900, -64(%rbp)
     leaq -48(%rbp), %rdi
@@ -116,49 +129,66 @@ main:
     movq $0, %rsi
     call gettimeofday
     loop:
+        movq -280(%rbp), %rax
+        movq %rax, -480(%rbp)
+        movq -288(%rbp), %rax
+        movq %rax, -488(%rbp)
+        movq -296(%rbp), %rax
+        movq %rax, -496(%rbp)
+        movq -304(%rbp), %rax
+        movq %rax, -504(%rbp)
+
+        start_events:
         # Handle events
-        movq -32(%rbp), %rdi
-        call XPending@PLT
-        cmp $0, %rax
-        je no_event
+            movq -32(%rbp), %rdi
+            call XPending@PLT
+            cmp $0, %rax
+            je no_event
 
-        movq -32(%rbp), %rdi
-        leaq -272(%rbp), %rsi
-        call XNextEvent@PLT
+            movq -32(%rbp), %rdi
+            leaq -272(%rbp), %rsi
+            call XNextEvent@PLT
 
-        leaq -272(%rbp), %rdi
-        cmpl $2, (%rdi)
-        jne not_keypress_event
+            leaq -272(%rbp), %rdi
+            cmpl $2, (%rdi)
+            jne not_keypress_event
 
-        leaq -304(%rbp), %rsi
-        call handle_keypress_event
+            leaq -304(%rbp), %rsi
+            call handle_keypress_event
 
-        # sound fx on keypress (doesnt work correctly when a key is held)
-        movq -344(%rbp), %rcx
-        movq -360(%rbp), %rdx
-        movq -440(%rbp), %rsi
-        movq -448(%rbp), %rdi
-        call play_sound_fx
+            # sound fx on keypress (doesnt work correctly when a key is held)
+            movq -344(%rbp), %rcx
+            movq -360(%rbp), %rdx
+            movq -440(%rbp), %rsi
+            movq -448(%rbp), %rdi
+            call play_sound_fx
 
-        not_keypress_event:
+            not_keypress_event:
 
-        leaq -272(%rbp), %rdi
-        cmpl $3, (%rdi)
-        jne not_keyrelease_event
+            leaq -272(%rbp), %rdi
+            cmpl $3, (%rdi)
+            jne not_keyrelease_event
 
-        leaq -304(%rbp), %rsi
-        call handle_keyrelease_event
-        not_keyrelease_event:
+            leaq -304(%rbp), %rsi
+            call handle_keyrelease_event
+            not_keyrelease_event:
 
-        leaq -272(%rbp), %rdi
-        leaq -304(%rbp), %rsi
+            leaq -272(%rbp), %rdi
+            leaq -304(%rbp), %rsi
 
-        cmpl $12, (%rdi)
-        jne not_expose_event
-        not_expose_event:
+            cmpl $12, (%rdi)
+            jne not_expose_event
+            not_expose_event:
+            
+            jmp start_events
         no_event:
 
         #Handle song
+        movq -320(%rbp), %rdi
+        call snd_pcm_avail@PLT
+        cmpq $32, %rax
+        jl should_not_advance_song
+
         movq -320(%rbp), %rdi
         movq -360(%rbp), %rsi
         movq -344(%rbp), %r9
@@ -171,6 +201,18 @@ main:
 
         should_not_advance_song:
 
+        leaq -392(%rbp), %rdi
+        call time_since 
+        movq $0, %rdx 
+        movq $1000, %rcx
+        divq %rcx 
+        movq %rax, %r8
+
+        leaq -304(%rbp), %rdi
+        leaq -504(%rbp), %rsi
+        movq -376(%rbp), %rdx
+        movq -432(%rbp), %rcx
+        call handle_hit
 
         leaq -24(%rbp), %rdi
         call time_since
@@ -279,12 +321,27 @@ main:
 
         movq $0, %rdx 
         movq $1000, %rcx
-        idivq %rcx # convert microseconds to miliseconds
+        divq %rcx # convert microseconds to miliseconds
         movq %rax, %r14
 
         movq -432(%rbp), %r15
         hit_obj_loop:
             movq -376(%rbp), %rdi
+
+            movq $0, %rsi
+            movw 6(%rdi, %r15, 8), %si # skip if status = 1 (object hit)
+            cmpq $1, %rsi
+            je next_obj
+
+            movq $0, %rsi
+            movw 6(%rdi, %r15, 8), %si # skip if status = 1 (object hit)
+            cmpq $2, %rsi
+            jne dont_trim_slider
+            movl %r14d, 8(%rdi, %r15, 8)
+
+            cmpl %r14d, 12(%rdi, %r15, 8)
+            jl next_obj
+            dont_trim_slider:
 
             movq $0, %rsi
             movl (%rdi, %r15, 8), %esi # get lane of hit object
@@ -294,8 +351,8 @@ main:
             subq %r14, %rdx # get the offset
 
             movq $0, %rcx
-            movl 4(%rdi, %r15, 8), %ecx # get if slider
-            testl %ecx, %ecx # look if slider
+            movw 4(%rdi, %r15, 8), %cx # get if slider
+            testw %cx, %cx # look if slider
             jz regular_obj # jump if not slider
             
             movl 12(%rdi, %r15, 8), %ecx # get slider time
@@ -429,3 +486,142 @@ handle_keyrelease_event:
     popq %rbp
 ret
 
+/*
+RDI - currently pressed lanes (struct of 4 qw)
+RSI - previously pressed lanes (struct of 4 qw)
+RDX - hit object array address
+RCX - hit objects that have passed
+R8  - time since start of song (ms)
+*/
+handle_hit:
+    pushq %r12
+    pushq %r13
+    pushq %r14
+    pushq %r15
+    pushq %rbp
+    movq %rsp, %rbp
+
+    subq $64, %rsp
+    movq %rdi, -8(%rbp)
+    movq %rsi, -16(%rbp)
+    movq %rdx, -24(%rbp)
+    movq %rcx, -32(%rbp)
+    movq %r8, -40(%rbp)
+
+    movq -24(%rbp), %rdi
+    movq $0, %r9
+    find_closest_obj_loop:
+        movq -32(%rbp), %r15
+        movq $-20000, %r13
+        movq $-1, %r8
+        find_loop:
+            movq $0, %rdx
+            movl 8(%rdi, %r15, 8), %edx
+            subq -40(%rbp), %rdx
+
+            # Absolute value
+            movq %rdx, %r12
+            movq %r12, %rax
+            sarq $63, %rax
+            movq %rax, %rdx
+            xorq %r12, %rdx
+            subq %rax, %rdx
+
+            cmpq $250, %r12
+            jg end_find_loop
+
+            cmpq $-100, %r12
+            jl next_iter
+
+            # Check state
+            movq $0, %rsi
+            movw 6(%rdi, %r15, 8), %si
+            cmpq $0, %rsi
+            jne next_iter
+
+            movq $0, %rsi
+            movl (%rdi, %r15, 8), %esi
+            cmpq %rsi, %r9
+            jne next_iter
+
+            movq %r15, %r8
+            movq %rdx, %r13
+            jmp end_find_loop
+
+            next_iter:
+            addq $2, %r15
+            jmp find_loop
+
+        end_find_loop:
+        incq %r9
+        
+        pushq %rdi
+        pushq %r9
+        cmpq $-1, %r8
+        je dont_set_status
+
+        leaq (%rdi, %r8, 8), %rdi
+        movq -8(%rbp), %rsi
+        movq -16(%rbp), %rdx
+        movq %r13, %rcx
+        call set_obj_status_to_hit
+        dont_set_status:
+
+        popq %r9
+        popq %rdi
+
+        cmpq $4, %r9
+        je end_find_closest_obj_loop
+        jmp find_closest_obj_loop
+    end_find_closest_obj_loop:
+
+    movq %rbp, %rsp
+    popq %rbp
+    popq %r15
+    popq %r14
+    popq %r13
+    popq %r12
+ret
+
+/*
+%RDI - obj location
+%RSI - curr lanes pressed
+%RDX - prev lanes pressed
+%RCX - delay
+*/
+set_obj_status_to_hit:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    movq $0, %rax
+    movl (%rdi), %eax
+    movq $-8, %r9 
+    pushq %rdx
+    imulq %r9
+    popq %rdx
+    addq $24, %rax
+
+    addq %rax, %rsi
+    addq %rax, %rdx
+    movq (%rsi), %r8
+    movq (%rdx), %r9
+
+    cmpq $1, %r8
+    jne end_set_obj
+    cmpq $0, %r9
+    jne end_set_obj
+
+    movw 4(%rdi), %ax
+    cmpw $1, %ax
+    jne set_status_regular_obj
+
+    movw $2, 6(%rdi)
+    jmp end_set_obj
+
+    set_status_regular_obj:
+    movw $1, 6(%rdi)
+
+    end_set_obj:
+    movq %rbp, %rsp
+    popq %rbp
+ret

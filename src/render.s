@@ -571,9 +571,11 @@ draw_play_area:
     movq -80(%rbp), %rsi
     movq -88(%rbp), %rdx
     movq $TOP_LEFT_X, %rcx
+    addq $BORDER_WIDTH, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
     movq $TOTAL_WIDTH, %r9
+    subq $BORDER_WIDTH, %r9
     movq $BORDER_WIDTH, %r10
     subq $8, %rsp
     pushq %r10

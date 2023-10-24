@@ -84,49 +84,19 @@ create_pcm_handle:
     movq $0, %rcx
     call snd_pcm_hw_params_set_rate_near@PLT
 
-    movq $0, -112(%rbp)
-    movq $2, -104(%rbp)
-    leaq -112(%rbp), %rcx
-    leaq -104(%rbp), %rdx
-    movq -32(%rbp), %rsi
-    movq -40(%rbp), %rdi
-    call snd_pcm_hw_params_set_periods_near@PLT
-
-    movq -104(%rbp), %rsi
-    movq %rsi, -120(%rbp)
-    movq $format, %rdi
-    movq $0, %rax
-    call printf
-
-    movq $0, -112(%rbp)
-    movq $128, -104(%rbp)
-    leaq -112(%rbp), %rcx
-    leaq -104(%rbp), %rdx
-    movq -32(%rbp), %rsi
-    movq -40(%rbp), %rdi
-    call snd_pcm_hw_params_set_period_size_near@PLT
-
-    movq -104(%rbp), %rsi
-    movq %rsi, -128(%rbp)
-    movq $format, %rdi
-    movq $0, %rax
-    call printf
-    
-    movq -120(%rbp), %rax
-    movq -128(%rbp), %rdi
-    mulq %rdi
-
-    movq %rax, -104(%rbp)
+    movq $512, -104(%rbp)
     leaq -104(%rbp), %rdx
     movq -32(%rbp), %rsi
     movq -40(%rbp), %rdi
     call snd_pcm_hw_params_set_buffer_size_near@PLT
 
-    movq -104(%rbp), %rsi
-    movq $format, %rdi
-    movq $0, %rax
-    call printf
-
+    movq $0, -112(%rbp)
+    movq $4, -104(%rbp)
+    leaq -112(%rbp), %rcx
+    leaq -104(%rbp), %rdx
+    movq -32(%rbp), %rsi
+    movq -40(%rbp), %rdi
+    call snd_pcm_hw_params_set_periods_near@PLT
 
     movq -32(%rbp), %rsi
     movq -40(%rbp), %rdi
