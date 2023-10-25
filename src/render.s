@@ -47,6 +47,7 @@ format: .asciz "%ld\n"
 .global draw_play_area
 .global draw_hit_object
 .global draw_text
+.global draw_hp_text
 
 
 
@@ -915,7 +916,6 @@ draw_text:
     movq -16(%rbp), %rsi
     movq -24(%rbp), %rdi
     call XDrawImageString@PLT
-    addq $8, %rsp
     jmp dont_draw_text
 
     draw_nice:
@@ -933,7 +933,6 @@ draw_text:
     movq -16(%rbp), %rsi
     movq -24(%rbp), %rdi
     call XDrawImageString@PLT
-    addq $8, %rsp
     jmp dont_draw_text
 
     draw_ok:
@@ -951,7 +950,6 @@ draw_text:
     movq -16(%rbp), %rsi
     movq -24(%rbp), %rdi
     call XDrawImageString@PLT
-    addq $8, %rsp
     jmp dont_draw_text
 
     draw_missed:
@@ -969,7 +967,6 @@ draw_text:
     movq -16(%rbp), %rsi
     movq -24(%rbp), %rdi
     call XDrawImageString@PLT
-    addq $8, %rsp
     jmp dont_draw_text
 
     dont_draw_text:
@@ -977,4 +974,80 @@ draw_text:
     popq %rbp
     ret
 
+hp: .asciz "100"
+formatString: .asciz "hp string %s, bytes %d, hp int %d\n"
+err1: .asciz "1\n"
+err2: .asciz "2\n"
+err3: .asciz "3\n"
+# args:
+# %rdi - gc
+# %rsi - hp integer
+draw_hp_text:
+    pushq %rbp
+    movq %rsp, %rbp
 
+    pushq (%rdi) # gc -8rbp
+    pushq 8(%rdi) # wi -16
+    pushq 16(%rdi) # di -24
+    subq $16, %rsp
+
+    movq %rsi, %rdi
+    leaq -32(%rbp), %rsi
+    call int_to_string
+    movq %rax, -40(%rbp)
+
+    movq $0xffffff, %rdx	# White
+    movq -8(%rbp), %rsi	
+    movq -24(%rbp), %rdi
+	call XSetForeground@PLT
+
+    movq -40(%rbp), %rax
+    pushq %rax
+    leaq -32(%rbp), %r9
+    movq $LANE_HEIGHT, %r8
+    movq $100, %rcx
+    movq -8(%rbp), %rdx
+    movq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call XDrawImageString@PLT # crash
+
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
+int_to_string:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    movq %rdi, %rax
+    movq $0, %rdi
+    movq $10, %rcx
+    loop_int_to_string:
+        movq $0, %rdx
+        divq %rcx
+        addq $48, %rdx
+        movb %dl, (%rsi, %rdi)
+        incq %rdi
+        testq %rax, %rax
+        jnz loop_int_to_string
+    movb $0, (%rsi, %rdi)
+    
+    cmpq $1, %rdi
+    je dont_reverse
+    movq $2, %r9
+    movq $1, %r10
+    cmpq $2, %rdi
+    cmoveq %r10, %r9
+
+    movb (%rsi), %cl
+    movb (%rsi, %r9), %r8b
+    movb %cl, (%rsi, %r9)
+    movb %r8b, (%rsi)
+
+
+    dont_reverse:
+    movq %rdi, %rax
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+    

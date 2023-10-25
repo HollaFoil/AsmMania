@@ -54,6 +54,7 @@ wip
 -496       = first object to draw
 
 -504(%rbp) = text_state
+-512(%rbp) = hp
 
 -520       = num of events
 
@@ -115,6 +116,7 @@ main:
     movq %rax, -440(%rbp)
 
     movq $0, -504(%rbp)
+    movq $100, -512(%rbp) # set hp to 100
 
     leaq -456(%rbp), %rdi
     movq $0, %rsi
@@ -215,6 +217,7 @@ main:
         movq -440(%rbp), %rdx
         movq -496(%rbp), %rcx
         leaq -504(%rbp), %r9
+        leaq -512(%rbp), %r10
         call handle_hit
     
 
@@ -321,6 +324,10 @@ main:
         leaq -48(%rbp), %rdi
         call draw_text
 
+        movq -512(%rbp), %rsi
+        leaq -48(%rbp), %rdi
+        call draw_hp_text
+
         pushq %r14
         pushq %r15
         leaq -456(%rbp), %rdi
@@ -399,6 +406,7 @@ main:
 
         jmp loop
 
+    dead:
     end:
     movq -320(%rbp), %rdi
     call snd_pcm_drain@PLT
@@ -505,6 +513,7 @@ RDX - hit object array address
 RCX - hit objects that have passed
 R8  - time since start of song (ms)
 R9  - text status address
+R10 - global hp address
 */
 handle_hit:
     pushq %r12
@@ -521,6 +530,7 @@ handle_hit:
     movq %rcx, -32(%rbp)
     movq %r8, -40(%rbp)
     movq %r9, -48(%rbp)
+    movq %r10, -56(%rbp)
 
     movq -24(%rbp), %rdi
     movq $0, %r9
@@ -579,6 +589,7 @@ handle_hit:
         movq -16(%rbp), %rdx
         movq %r13, %rcx
         movq -48(%rbp), %r8
+        movq -56(%rbp), %r9
         call set_obj_status_to_hit
 
         
@@ -606,13 +617,14 @@ ret
 %RDX - prev lanes pressed
 %RCX - delay
 (%r8) - text status address
+(%r9) - global hp address
 */
 set_obj_status_to_hit:
     pushq %rbp
     movq %rsp, %rbp
 
     pushq %r8
-    pushq %r8
+    pushq %r9
 
     movq $0, %rax
     movl (%rdi), %eax
@@ -636,9 +648,10 @@ set_obj_status_to_hit:
     pushq %rdi
 
     # update text
+    movq -16(%rbp), %rdx
     movq %r12, %rsi
     movq -8(%rbp), %rdi
-    call set_text_state
+    call handle_note_press
 
     popq %rdi
     popq %rdi
@@ -660,22 +673,80 @@ ret
 
 
 # args:
-# (%rdi) - text_state obj
-# First 32 bits specify string
-# 0 - no text, 1 - Ok, 2 - Nice!, 3 - Perfect!, 4 - missed perhaps
-# Last 32 bits specify frames left to draw
+# (%rdi) - text_state obj address
 # %rsi - delay of keypress
-# 
-set_text_state:
+# %rdx - global hp address
+handle_note_press:
     pushq %rbp
     movq %rsp, %rbp
 
+    pushq %rdi
+    pushq %rdx
+
     cmpq $8, %rsi
-    jle set_perfect
+    jle perfect
     cmpq $50, %rsi
-    jle set_nice
+    jle nice
     cmpq $100, %rsi
-    jle set_ok
+    jle ok
+
+    #missed:
+    movq $1, %rsi
+    call set_text_status
+    popq %rdi
+    subq $8, %rsp
+    movq $-3, %rsi
+    call handle_health
+    jmp end_set_handle_note_press
+    
+    ok:
+    movq $2, %rsi
+    call set_text_status
+    popq %rdi
+    subq $8, %rsp
+    movq $0, %rsi
+    call handle_health
+    jmp end_set_handle_note_press
+
+    nice:
+    movq $3, %rsi
+    call set_text_status
+    popq %rdi
+    subq $8, %rsp
+    movq $1, %rsi
+    call handle_health
+    jmp end_set_handle_note_press
+
+    perfect:
+    movq $4, %rsi
+    call set_text_status
+    popq %rdi
+    subq $8, %rsp
+    movq $3, %rsi
+    call handle_health
+
+
+    end_set_handle_note_press:
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
+# args:
+# (%rdi) - text_state obj address
+# First 32 bits specify string
+# 0 - no text, 1 - Ok, 2 - Nice!, 3 - Perfect!, 4 - missed perhaps
+# Last 32 bits specify frames left to draw
+# %rsi - miss/ok/nice/perfect 1-4
+set_text_status:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    cmpq $4, %rsi
+    je set_perfect
+    cmpq $3, %rsi
+    je set_nice
+    cmpq $2, %rsi
+    je set_ok
 
     set_missed:
     movq $4, %rsi
@@ -698,6 +769,30 @@ set_text_state:
     shlq $32, %rsi
     addq $60, %rsi # how many frames to last
     movq %rsi, (%rdi)
+
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
+# args:
+# (%rdi) - global hp address
+# %rsi - hp lost or gained
+handle_health:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    movq (%rdi), %rdx
+    addq %rsi, %rdx
+    cmpq $0, %rdx
+    jle dead
+
+    cmpq $100, %rdx
+    jle no_health_overflow
+    
+    movq $100, %rdx
+
+    no_health_overflow:
+    movq %rdx, (%rdi)
 
     movq %rbp, %rsp
     popq %rbp
