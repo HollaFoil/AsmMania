@@ -385,6 +385,19 @@ main:
             keep_obj:
             cmpq $2000, %rdx # check if object is above screen
             jg end_hit_obj_drawing
+
+            pushq %rcx
+            pushq %rdx
+            pushq %rsi
+            pushq %rdi
+            movq %rdx, %rsi
+            movq %rcx, %rdx
+            leaq (%rdi, %r15, 8), %rdi
+            call check_for_miss
+            popq %rdi
+            popq %rsi
+            popq %rdx
+            popq %rcx
             
             leaq -48(%rbp), %rdi # get window or smth
             #shlq $1, %rdx # doubled the speed
@@ -551,7 +564,7 @@ handle_hit:
             xorq %r12, %rdx
             subq %rax, %rdx
 
-            cmpq $300, %r12
+            cmpq $280, %r12
             jg end_find_loop
 
             cmpq $-100, %r12
@@ -683,9 +696,9 @@ handle_note_press:
     pushq %rdi
     pushq %rdx
 
-    cmpq $8, %rsi
+    cmpq $7, %rsi
     jle perfect
-    cmpq $50, %rsi
+    cmpq $40, %rsi
     jle nice
     cmpq $100, %rsi
     jle ok
@@ -722,7 +735,7 @@ handle_note_press:
     call set_text_status
     popq %rdi
     subq $8, %rsp
-    movq $3, %rsi
+    movq $2, %rsi
     call handle_health
 
 
@@ -788,7 +801,7 @@ handle_health:
 
     cmpq $100, %rdx
     jle no_health_overflow
-    
+
     movq $100, %rdx
 
     no_health_overflow:
@@ -796,4 +809,55 @@ handle_health:
 
     movq %rbp, %rsp
     popq %rbp
+    ret
+
+# args:
+# %rdi - hit object address
+# %rsi - note offset
+# %rdx - slider end offset
+check_for_miss:
+
+    cmpw $1, 4(%rdi)
+    je check_for_miss_slider
+
+    cmpw $1, 6(%rdi) # check if it was hit already
+    je note_fulfilled
+    cmpw $1, 2(%rdi) # check if it was missed and accounted for already
+    je note_fulfilled
+    cmpq $-100, %rsi # check if it was missed
+    jge note_fulfilled
+    movw $1, 2(%rdi) # set the flag for being accounted for
+    movq $-3, %rsi # subtract this much hp
+    leaq -512(%rbp), %rdi
+    call handle_health
+    jmp note_fulfilled
+
+    check_for_miss_slider:
+    cmpw $3, 6(%rdi) # check if it was hit fully already
+    je note_fulfilled
+    cmpw $2, 6(%rdi) # check if the start has been hit already
+    je slider_start_fulfilled
+
+    cmpw $1, 2(%rdi) # check if it was missed and accounted for already
+    je note_fulfilled
+    cmpq $-100, %rsi # check if it was missed
+    jge note_fulfilled
+    movw $1, 2(%rdi) # set the flag for start being accounted for
+    movq $-3, %rsi # subtract this much hp
+    leaq -512(%rbp), %rdi
+    call handle_health
+    jmp note_fulfilled
+
+    slider_start_fulfilled:
+    cmpw $2, 2(%rdi) # check if it was missed and accounted for already
+    je note_fulfilled
+    cmpq $-100, %rdx # check if it was missed
+    jge note_fulfilled
+    movw $2, 2(%rdi) # set the flag for start being accounted for
+    movq $-3, %rsi # subtract this much hp
+    leaq -512(%rbp), %rdi
+    call handle_health
+    jmp note_fulfilled
+
+    note_fulfilled:
     ret

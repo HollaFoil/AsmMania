@@ -645,7 +645,6 @@ draw_hit_object:
     je third_lane
     cmpb $3, %al
     je fourth_lane
-    jmp error
 
     slider_select:
     movq -64(%rbp), %rax
@@ -657,7 +656,6 @@ draw_hit_object:
     je third_lane_slider
     cmpb $3, %al
     je fourth_lane_slider
-    jmp error
 
 
     first_lane:
@@ -1050,4 +1048,3 @@ int_to_string:
     movq %rbp, %rsp
     popq %rbp
     ret
-    
