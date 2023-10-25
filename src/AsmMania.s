@@ -3,6 +3,7 @@
 format: .asciz "%ld\n"
 format2: .asciz "%ld %ld\n"
 format3: .asciz "%ld %ld %ld\n"
+final_streak_message: .asciz "Highest streak: %d\n"
 
 /* RESERVED STACK SPACE = 640 BYTES
 -16(%rbp) = time since last frame in microseconds
@@ -53,10 +54,11 @@ wip
 
 -496       = first object to draw
 
--504(%rbp) = text_state
--512(%rbp) = hp
+
 
 -520       = num of events
+
+
 
 
 
@@ -66,6 +68,13 @@ wip
 -552       = lane2pressed old
 -560       = lane3pressed old
 -568       = lane4pressed old
+
+player performance struct
+-576(%rbp) = text_state
+-584(%rbp) = hp
+-592(%rbp) = current streak
+-600(%rbp) = max streak
+-608(%rbp) = score
 
 
 */
@@ -115,8 +124,11 @@ main:
     call load_config
     movq %rax, -440(%rbp)
 
-    movq $0, -504(%rbp)
-    movq $100, -512(%rbp) # set hp to 100
+    movq $0, -576(%rbp)
+    movq $100, -584(%rbp) # set hp to 100
+    movq $0, -592(%rbp)
+    movq $0, -600(%rbp)
+    movq $0, -608(%rbp)
 
     leaq -456(%rbp), %rdi
     movq $0, %rsi
@@ -191,7 +203,7 @@ main:
         addq $512, %rdi
         movq -416(%rbp), %rsi
         cmpq %rdi, %rsi
-        jl end
+        jl song_end
 
         movq -320(%rbp), %rdi
         movq -424(%rbp), %rsi
@@ -216,8 +228,7 @@ main:
         leaq -568(%rbp), %rsi
         movq -440(%rbp), %rdx
         movq -496(%rbp), %rcx
-        leaq -504(%rbp), %r9
-        leaq -512(%rbp), %r10
+        leaq -608(%rbp), %r9
         call handle_hit
     
 
@@ -320,13 +331,17 @@ main:
         leaq -488(%rbp), %r9
         call draw_play_area
 
-        leaq -504(%rbp), %rsi
+        leaq -576(%rbp), %rsi
         leaq -48(%rbp), %rdi
         call draw_text
 
-        movq -512(%rbp), %rsi
+        movq -584(%rbp), %rsi
         leaq -48(%rbp), %rdi
         call draw_hp_text
+
+        movq -592(%rbp), %rsi
+        leaq -48(%rbp), %rdi
+        call draw_current_streak
 
         pushq %r14
         pushq %r15
@@ -392,6 +407,7 @@ main:
             pushq %rdi
             movq %rdx, %rsi
             movq %rcx, %rdx
+            leaq -608(%rbp), %rcx
             leaq (%rdi, %r15, 8), %rdi
             call check_for_miss
             popq %rdi
@@ -420,9 +436,19 @@ main:
         jmp loop
 
     dead:
+    movq -16(%rdi), %rsi
+    movq $final_streak_message, %rdi
+    movq $0, %rax
+    call printf
+    jmp end
+    song_end:
+    movq -600(%rbp), %rsi
+    movq $final_streak_message, %rdi
+    movq $0, %rax
+    call printf
     end:
     movq -320(%rbp), %rdi
-    call snd_pcm_drain@PLT
+    call snd_pcm_drop@PLT
     movq -320(%rbp), %rdi
     call snd_pcm_close@PLT
     movq %rbp, %rsp
@@ -525,8 +551,7 @@ RSI - previously pressed lanes (struct of 4 qw)
 RDX - hit object array address
 RCX - hit objects that have passed
 R8  - time since start of song (ms)
-R9  - text status address
-R10 - global hp address
+R9  - player performance struct
 */
 handle_hit:
     pushq %r12
@@ -543,7 +568,6 @@ handle_hit:
     movq %rcx, -32(%rbp)
     movq %r8, -40(%rbp)
     movq %r9, -48(%rbp)
-    movq %r10, -56(%rbp)
 
     movq -24(%rbp), %rdi
     movq $0, %r9
@@ -602,7 +626,6 @@ handle_hit:
         movq -16(%rbp), %rdx
         movq %r13, %rcx
         movq -48(%rbp), %r8
-        movq -56(%rbp), %r9
         call set_obj_status_to_hit
 
         
@@ -629,15 +652,14 @@ ret
 %RSI - curr lanes pressed
 %RDX - prev lanes pressed
 %RCX - delay
-(%r8) - text status address
-(%r9) - global hp address
+(%r8) - player performance struct
 */
 set_obj_status_to_hit:
     pushq %rbp
     movq %rsp, %rbp
 
     pushq %r8
-    pushq %r9
+    subq $8, %rsp
 
     movq $0, %rax
     movl (%rdi), %eax
@@ -661,7 +683,6 @@ set_obj_status_to_hit:
     pushq %rdi
 
     # update text
-    movq -16(%rbp), %rdx
     movq %r12, %rsi
     movq -8(%rbp), %rdi
     call handle_note_press
@@ -686,15 +707,14 @@ ret
 
 
 # args:
-# (%rdi) - text_state obj address
+# (%rdi) - player_performance obj address
 # %rsi - delay of keypress
-# %rdx - global hp address
 handle_note_press:
     pushq %rbp
     movq %rsp, %rbp
 
     pushq %rdi
-    pushq %rdx
+    pushq %rdi
 
     cmpq $7, %rsi
     jle perfect
@@ -704,37 +724,54 @@ handle_note_press:
     jle ok
 
     #missed:
+    movq $0, 16(%rdi) # reset the streak
     movq $1, %rsi
+    movq -8(%rbp), %rdi
+    leaq 32(%rdi), %rdi
     call set_text_status
-    popq %rdi
-    subq $8, %rsp
+    movq -8(%rbp), %rdi
+    leaq 24(%rdi), %rdi
     movq $-3, %rsi
     call handle_health
     jmp end_set_handle_note_press
     
     ok:
+    incq 16(%rdi) # increment the streak
+    #movq 16(%rdi), %rsi
+    #movq 8(%rdi), %rdx
+    #cmpq %rdx, %rsi
+    #cmovl %rsi, %rdx
+    #movq %rdx, 8(%rdi)
     movq $2, %rsi
+    movq -8(%rbp), %rdi
+    leaq 32(%rdi), %rdi
     call set_text_status
-    popq %rdi
-    subq $8, %rsp
+    movq -8(%rbp), %rdi
+    leaq 24(%rdi), %rdi
     movq $0, %rsi
     call handle_health
     jmp end_set_handle_note_press
 
     nice:
+    incq 16(%rdi) # increment the streak
     movq $3, %rsi
+    movq -8(%rbp), %rdi
+    leaq 32(%rdi), %rdi
     call set_text_status
-    popq %rdi
-    subq $8, %rsp
+    movq -8(%rbp), %rdi
+    leaq 24(%rdi), %rdi
     movq $1, %rsi
     call handle_health
     jmp end_set_handle_note_press
 
     perfect:
+    incq 16(%rdi) # increment the streak
     movq $4, %rsi
+    movq -8(%rbp), %rdi
+    leaq 32(%rdi), %rdi
     call set_text_status
-    popq %rdi
-    subq $8, %rsp
+    movq -8(%rbp), %rdi
+    leaq 24(%rdi), %rdi
     movq $2, %rsi
     call handle_health
 
@@ -815,7 +852,13 @@ handle_health:
 # %rdi - hit object address
 # %rsi - note offset
 # %rdx - slider end offset
+# %rcx - player_perf struct
 check_for_miss:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    pushq %rcx #-8%rbp
+    subq $8, %rsp
 
     cmpw $1, 4(%rdi)
     je check_for_miss_slider
@@ -828,8 +871,11 @@ check_for_miss:
     jge note_fulfilled
     movw $1, 2(%rdi) # set the flag for being accounted for
     movq $-3, %rsi # subtract this much hp
-    leaq -512(%rbp), %rdi
+    movq -8(%rbp), %rdi
+    leaq 24(%rdi), %rdi
     call handle_health
+    movq -8(%rbp), %rdi
+    movq $0, 16(%rdi) # reset streak
     jmp note_fulfilled
 
     check_for_miss_slider:
@@ -844,8 +890,11 @@ check_for_miss:
     jge note_fulfilled
     movw $1, 2(%rdi) # set the flag for start being accounted for
     movq $-3, %rsi # subtract this much hp
-    leaq -512(%rbp), %rdi
+    movq -8(%rbp), %rdi
+    leaq 24(%rdi), %rdi
     call handle_health
+    movq -8(%rbp), %rdi
+    movq $0, 16(%rdi) # reset streak
     jmp note_fulfilled
 
     slider_start_fulfilled:
@@ -855,9 +904,14 @@ check_for_miss:
     jge note_fulfilled
     movw $2, 2(%rdi) # set the flag for start being accounted for
     movq $-3, %rsi # subtract this much hp
-    leaq -512(%rbp), %rdi
+    movq -8(%rbp), %rdi
+    leaq 24(%rdi), %rdi
     call handle_health
+    movq -8(%rbp), %rdi
+    movq $0, 16(%rdi) # reset streak
     jmp note_fulfilled
 
     note_fulfilled:
+    movq %rbp, %rsp
+    popq %rbp
     ret

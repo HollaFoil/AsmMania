@@ -48,6 +48,7 @@ format: .asciz "%ld\n"
 .global draw_hit_object
 .global draw_text
 .global draw_hp_text
+.global draw_current_streak
 
 
 
@@ -972,11 +973,6 @@ draw_text:
     popq %rbp
     ret
 
-hp: .asciz "100"
-formatString: .asciz "hp string %s, bytes %d, hp int %d\n"
-err1: .asciz "1\n"
-err2: .asciz "2\n"
-err3: .asciz "3\n"
 # args:
 # %rdi - gc
 # %rsi - hp integer
@@ -994,7 +990,7 @@ draw_hp_text:
     call int_to_string
     movq %rax, -40(%rbp)
 
-    movq $0xffffff, %rdx	# White
+    movq $0xffc0cb, %rdx	# light red
     movq -8(%rbp), %rsi	
     movq -24(%rbp), %rdi
 	call XSetForeground@PLT
@@ -1007,7 +1003,7 @@ draw_hp_text:
     movq -8(%rbp), %rdx
     movq -16(%rbp), %rsi
     movq -24(%rbp), %rdi
-    call XDrawImageString@PLT # crash
+    call XDrawImageString@PLT
 
     movq %rbp, %rsp
     popq %rbp
@@ -1030,21 +1026,62 @@ int_to_string:
         jnz loop_int_to_string
     movb $0, (%rsi, %rdi)
     
-    cmpq $1, %rdi
-    je dont_reverse
-    movq $2, %r9
-    movq $1, %r10
-    cmpq $2, %rdi
-    cmoveq %r10, %r9
-
-    movb (%rsi), %cl
-    movb (%rsi, %r9), %r8b
-    movb %cl, (%rsi, %r9)
-    movb %r8b, (%rsi)
-
+    pushq %rdi
+    
+    movq $0, %rdx
+    loop_reverse_string:
+        decq %rdi
+        cmpq %rdi, %rdx
+        je dont_reverse
+        movb (%rsi, %rdi), %cl
+        movb (%rsi, %rdx), %r8b
+        movb %cl, (%rsi, %rdx)
+        movb %r8b, (%rsi, %rdi)
+        incq %rdx
+        cmpq %rdi, %rdx
+        je dont_reverse
+        jmp loop_reverse_string
 
     dont_reverse:
-    movq %rdi, %rax
+    popq %rax
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
+
+# args:
+# %rdi - gc
+# %rsi - streak
+draw_current_streak:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    pushq (%rdi) # gc -8rbp
+    pushq 8(%rdi) # wi -16
+    pushq 16(%rdi) # di -24
+    subq $16, %rsp
+
+    movq %rsi, %rdi
+    leaq -32(%rbp), %rsi
+    call int_to_string
+    movq %rax, -40(%rbp)
+
+    movq $0xffffff, %rdx	# White
+    movq -8(%rbp), %rsi	
+    movq -24(%rbp), %rdi
+	call XSetForeground@PLT
+
+    movq -40(%rbp), %rax
+    pushq %rax
+    leaq -32(%rbp), %r9
+    movq $LANE_HEIGHT, %r8
+    subq $50, %r8
+    movq $500, %rcx
+    movq -8(%rbp), %rdx
+    movq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call XDrawImageString@PLT
+
     movq %rbp, %rsp
     popq %rbp
     ret
