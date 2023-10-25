@@ -872,6 +872,9 @@ nice_end:
 ok: .asciz "Ok"
 ok_end:
 .equ ok_length, ok_end - ok - 1
+missed: .asciz "Missed"
+missed_end:
+.equ missed_length, missed_end - missed - 1
 # args:
 # %rdi - gc struct
 # (%rsi) - text_state
@@ -894,6 +897,8 @@ draw_text:
     je draw_nice
     cmpl $3, 4(%rsi)
     je draw_perfect
+    cmpl $4, 4(%rsi)
+    je draw_missed
 
     draw_perfect:
  
@@ -940,6 +945,24 @@ draw_text:
 
     pushq $ok_length
     movq $ok, %r9
+    movq $LANE_HEIGHT, %r8
+    movq $500, %rcx
+    movq -8(%rbp), %rdx
+    movq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call XDrawImageString@PLT
+    addq $8, %rsp
+    jmp dont_draw_text
+
+    draw_missed:
+
+    movq $0xff0000, %rdx	# Red
+    movq -8(%rbp), %rsi	
+    movq -24(%rbp), %rdi
+	call XSetForeground@PLT
+
+    pushq $missed_length
+    movq $missed, %r9
     movq $LANE_HEIGHT, %r8
     movq $500, %rcx
     movq -8(%rbp), %rdx

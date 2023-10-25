@@ -541,7 +541,7 @@ handle_hit:
             xorq %r12, %rdx
             subq %rax, %rdx
 
-            cmpq $250, %r12
+            cmpq $300, %r12
             jg end_find_loop
 
             cmpq $-100, %r12
@@ -672,9 +672,16 @@ set_text_state:
 
     cmpq $8, %rsi
     jle set_perfect
-    cmpq $60, %rsi
+    cmpq $50, %rsi
     jle set_nice
+    cmpq $100, %rsi
+    jle set_ok
+
+    set_missed:
+    movq $4, %rsi
+    jmp end_set_text
     
+    set_ok:
     movq $1, %rsi
     jmp end_set_text
 
@@ -684,6 +691,8 @@ set_text_state:
 
     set_perfect:
     movq $3, %rsi
+    jmp end_set_text
+
 
     end_set_text:
     shlq $32, %rsi
