@@ -338,9 +338,7 @@ main:
         leaq -48(%rbp), %rdi
         call draw_text
 
-        movq -584(%rbp), %rsi
-        leaq -48(%rbp), %rdi
-        call draw_hp_text
+        
 
         movq -592(%rbp), %rsi
         leaq -48(%rbp), %rdi
@@ -435,6 +433,10 @@ main:
             cmpq %r15, %rdi
             jne hit_obj_loop
         end_hit_obj_drawing:
+
+        movq -584(%rbp), %rsi
+        leaq -48(%rbp), %rdi
+        call draw_hp_bar
 
         popq %r15
         popq %r14

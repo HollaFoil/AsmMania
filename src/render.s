@@ -47,7 +47,7 @@ format: .asciz "%ld\n"
 .global draw_play_area
 .global draw_hit_object
 .global draw_text
-.global draw_hp_text
+.global draw_hp_bar
 .global draw_current_streak
 .global draw_current_score
 
@@ -981,7 +981,7 @@ draw_text:
 # args:
 # %rdi - gc
 # %rsi - hp integer
-draw_hp_text:
+draw_hp_bar:
     pushq %rbp
     movq %rsp, %rbp
 
@@ -1017,6 +1017,21 @@ draw_hp_text:
     movq -24(%rbp), %rdi
 	call XSetForeground@PLT
 
+    movq $640, %rax
+    movq -48(%rbp), %rdi
+    mulq %rdi
+    movq $100, %rdi
+    divq %rdi
+
+    pushq $10
+    movq %rax, %r9
+    movq $0, %r8
+    movq $0, %rcx
+    movq -8(%rbp), %rdx
+    movq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call XFillRectangle@PLT
+    /*
     movq -40(%rbp), %rax
     pushq %rax
     leaq -32(%rbp), %r9
@@ -1027,7 +1042,7 @@ draw_hp_text:
     movq -16(%rbp), %rsi
     movq -24(%rbp), %rdi
     call XDrawImageString@PLT
-
+    */
     movq %rbp, %rsp
     popq %rbp
     ret
