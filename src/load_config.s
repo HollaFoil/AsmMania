@@ -72,6 +72,7 @@ load_config:
     call read_file
     testq %rax, %rax
     jz read_failed
+    movq %rax, -24(%rbp)
     
     movq -16(%rbp), %rdx # how many bytes to read
     movq %rax, %rsi # load the char address
@@ -126,6 +127,12 @@ load_config:
 
     movq -104(%rbp), %rax
     movq %rax, 48(%rdi)
+
+    movq -24(%rbp), %rax
+    movq %rax, 56(%rdi)
+
+    movq -16(%rbp), %rax
+    movq %rax, 64(%rdi)
 
     movq -72(%rbp), %rax
 

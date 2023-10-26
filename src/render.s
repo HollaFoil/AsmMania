@@ -50,6 +50,7 @@ format: .asciz "%ld\n"
 .global draw_hp_bar
 .global draw_current_streak
 .global draw_current_score
+.global draw_metadata
 
 
 
@@ -693,8 +694,8 @@ draw_hit_object:
     movq %r12, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
-    subq -72(%rbp), %r8
     subq $BUTTON_HEIGHT, %r8
+    subq -72(%rbp), %r8
     movq $LANE_WIDTH, %r9
     movq $BUTTON_HEIGHT, %r10
     pushq %r10
@@ -712,8 +713,8 @@ draw_hit_object:
     movq %r13, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
-    subq -72(%rbp), %r8
     subq $BUTTON_HEIGHT, %r8
+    subq -72(%rbp), %r8
     movq $LANE_WIDTH, %r9
     movq $BUTTON_HEIGHT, %r10
     pushq %r10
@@ -732,8 +733,8 @@ draw_hit_object:
     movq %r14, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
-    subq -72(%rbp), %r8
     subq $BUTTON_HEIGHT, %r8
+    subq -72(%rbp), %r8
     movq $LANE_WIDTH, %r9
     movq $BUTTON_HEIGHT, %r10
     pushq %r10
@@ -752,8 +753,8 @@ draw_hit_object:
     addq $BORDER_WIDTH, %rcx
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
-    subq -80(%rbp), %r8
     subq $BUTTON_HEIGHT, %r8
+    subq -80(%rbp), %r8
     movq $LANE_WIDTH, %r9
     movq -80(%rbp), %r10
     subq -72(%rbp), %r10
@@ -1157,6 +1158,64 @@ draw_current_score:
     movq -24(%rbp), %rdi
     call XDrawImageString@PLT
 
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
+# args:
+# %rdi - gc
+# %rsi - metadata
+# %rdx - number of chars
+draw_metadata:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    pushq (%rdi) # gc -8rbp
+    pushq 8(%rdi) # wi -16
+    pushq 16(%rdi) # di -24
+    pushq %rsi # -32
+    pushq %rdx # -40
+    pushq %rbx
+    pushq %r15
+
+    movq $0xffffff, %rdx	# White
+    movq -8(%rbp), %rsi	
+    movq -24(%rbp), %rdi
+	call XSetForeground@PLT
+
+    movq $3, %rbx
+    #movq $0, %r15
+    draw_metadata_loop:
+            movq -32(%rbp), %r9
+            movq $0, %rdi
+        draw_metadata_substring_loop:
+            incq %rdi
+            cmpb $10, (%r9, %rdi)
+            jne draw_metadata_substring_loop
+
+        movq %rdi, %rax
+        decq %rax
+        pushq %rax
+        movq -32(%rbp), %r9
+        incq %rdi
+        addq %rdi, -32(%rbp)
+        movq $30, %r8
+        movq $4, %rax
+        subq %rbx, %rax
+        movq $15, %rdi
+        mulq %rdi
+        addq %rax, %r8
+        movq $10, %rcx
+        movq -8(%rbp), %rdx
+        movq -16(%rbp), %rsi
+        movq -24(%rbp), %rdi
+        call XDrawImageString@PLT
+        addq $8, %rsp
+        decq %rbx
+        jnz draw_metadata_loop
+
+    popq %r15
+    popq %rbx
     movq %rbp, %rsp
     popq %rbp
     ret

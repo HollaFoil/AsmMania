@@ -3,7 +3,7 @@
 format: .asciz "%ld\n"
 format2: .asciz "%ld %ld\n"
 format3: .asciz "%ld %ld %ld\n"
-final_streak_message: .asciz "Highest streak: %d\n"
+final_streak_message: .asciz "Highest combo: %d\n"
 score_message: .asciz "Score: %d\n"
 lost_message: .asciz "You lost!\n"
 map_cleared_message: .asciz "You have cleared the map!\n"
@@ -34,12 +34,10 @@ map_cleared_message: .asciz "You have cleared the map!\n"
 
 
 
-
-wip
--376(%rbp) = volume 0-100
+-368(%rbp) = metadata number of chars
+-376(%rbp) = metadata
 -384(%rbp) = size of hit sound in bytes
 -392(%rpb) = pointer to hit sound
-
 -400(%rbp) = preview_time 
 -408(%rbp) = song offset
 -416(%rbp) = size of song in bytes
@@ -215,8 +213,21 @@ main:
         movq $128, %rdx
         call snd_pcm_writei@PLT
         cmpq $-11, %rax # Error code -11, EAGAIN, driver not ready to accept new data
+
         je should_not_advance_song
         addq $512, -408(%rbp)
+
+        cmpq $0, %rax
+        jge should_not_advance_song
+        movq %rax, %rsi
+        movq -320(%rbp), %rdi
+        movq $0, %rdx
+        call snd_pcm_recover@PLT
+
+        movq %rax, %rsi
+        movq $format, %rdi
+        movq $0, %rax
+        call printf
 
         should_not_advance_song:
 
@@ -347,6 +358,11 @@ main:
         movq -608(%rbp), %rsi
         leaq -48(%rbp), %rdi
         call draw_current_score
+
+        movq -368(%rbp), %rdx
+        movq -376(%rbp), %rsi
+        leaq -48(%rbp), %rdi
+        call draw_metadata
 
         pushq %r14
         pushq %r15
@@ -859,7 +875,7 @@ handle_health:
     movq %rsp, %rbp
 
     movq (%rdi), %rdx
-    addq %rsi, %rdx
+    #addq %rsi, %rdx
     cmpq $0, %rdx
     jle dead
 
