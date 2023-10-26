@@ -178,13 +178,6 @@ main:
             leaq -304(%rbp), %rsi
             call handle_keypress_event
 
-            # sound fx on keypress (doesnt work correctly when a key is held)
-            movq -408(%rbp), %rcx
-            movq -424(%rbp), %rdx
-            movq -384(%rbp), %rsi
-            movq -392(%rbp), %rdi
-            call play_sound_fx
-
             not_keypress_event:
 
             leaq -272(%rbp), %rdi
@@ -204,6 +197,31 @@ main:
             
             jmp start_events
         no_event:
+
+        # sound fx on keypress
+        movq $0, %rdi
+        check_keypress:
+            cmpq $1, -304(%rbp, %rdi, 8)
+            jne next_iter_check_keypress
+            cmpq $0, -568(%rbp, %rdi, 8)
+            jne next_iter_check_keypress
+            jmp play_sfx
+
+            next_iter_check_keypress:
+            incq %rdi
+            cmpq $4, %rdi
+            je end_check_keypress
+            jmp check_keypress
+        end_check_keypress:
+        jmp dont_play_sfx
+
+        play_sfx:
+        movq -408(%rbp), %rcx
+        movq -424(%rbp), %rdx
+        movq -384(%rbp), %rsi
+        movq -392(%rbp), %rdi
+        call play_sound_fx
+        dont_play_sfx:
 
         #Handle song
         movq -320(%rbp), %rdi
