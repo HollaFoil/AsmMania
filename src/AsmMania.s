@@ -5,6 +5,8 @@ format2: .asciz "%ld %ld\n"
 format3: .asciz "%ld %ld %ld\n"
 final_streak_message: .asciz "Highest streak: %d\n"
 score_message: .asciz "Score: %d\n"
+lost_message: .asciz "You lost!\n"
+map_cleared_message: .asciz "You have cleared the map!\n"
 
 /* RESERVED STACK SPACE = 640 BYTES
 -16(%rbp) = time since last frame in microseconds
@@ -442,18 +444,28 @@ main:
 
     
     song_end:
+    movq $map_cleared_message, %rdi
+    movq $0, %rax
+    call printf
+
+    movq -608(%rbp), %rsi
+    movq $score_message, %rdi
+    movq $0, %rax
+    call printf
+
     movq -600(%rbp), %rsi
     movq $final_streak_message, %rdi
     movq $0, %rax
     call printf
+
     end:
-    movq -320(%rbp), %rdi # wrong stack when dying
-    call snd_pcm_drop@PLT
+    movq -320(%rbp), %rdi
+    call snd_pcm_drain@PLT
     movq -320(%rbp), %rdi
     call snd_pcm_close@PLT
+
     movq %rbp, %rsp
     popq %rbp
-
     movq $0, %rdi
     call exit
 
@@ -864,8 +876,8 @@ handle_health:
 dead:
     subq $8, %rsp
     pushq %rdi
-    movq -16(%rdi), %rsi
-    movq $final_streak_message, %rdi
+
+    movq $lost_message, %rdi
     movq $0, %rax
     call printf
 
@@ -878,8 +890,16 @@ dead:
     
     popq %rdi
     pushq %rdi
-    movq 264(%rdi), %rdi # wrong stack when dying
-    call snd_pcm_drop@PLT
+    movq -16(%rdi), %rsi
+    movq $final_streak_message, %rdi
+    movq $0, %rax
+    call printf
+
+    popq %rdi
+    pushq %rdi
+    movq 264(%rdi), %rdi # why do we use the stack instead of .data?
+    call snd_pcm_drain@PLT
+  
     popq %rdi
     pushq %rdi
     movq 264(%rdi), %rdi
