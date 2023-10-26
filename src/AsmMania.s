@@ -201,7 +201,7 @@ main:
 
         # check if song has ended
         movq -408(%rbp), %rdi
-        addq $512, %rdi
+        addq $1024, %rdi
         movq -416(%rbp), %rsi
         cmpq %rdi, %rsi
         jl song_end
@@ -210,24 +210,17 @@ main:
         movq -424(%rbp), %rsi
         movq -408(%rbp), %r9
         addq %r9, %rsi
-        movq $128, %rdx
+        movq $256, %rdx
         call snd_pcm_writei@PLT
         cmpq $-11, %rax # Error code -11, EAGAIN, driver not ready to accept new data
 
         je should_not_advance_song
-        addq $512, -408(%rbp)
+        addq $1024, -408(%rbp)
+
+        # sometimes pcm throws error code -32, underrun
 
         cmpq $0, %rax
-        jge should_not_advance_song
-        movq %rax, %rsi
-        movq -320(%rbp), %rdi
-        movq $0, %rdx
-        call snd_pcm_recover@PLT
-
-        movq %rax, %rsi
-        movq $format, %rdi
-        movq $0, %rax
-        call printf
+        je no_event
 
         should_not_advance_song:
 

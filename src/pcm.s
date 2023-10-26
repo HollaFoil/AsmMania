@@ -84,7 +84,7 @@ create_pcm_handle:
     movq $0, %rcx
     call snd_pcm_hw_params_set_rate_near@PLT
 
-    movq $512, -104(%rbp)
+    movq $1024, -104(%rbp)
     leaq -104(%rbp), %rdx
     movq -32(%rbp), %rsi
     movq -40(%rbp), %rdi

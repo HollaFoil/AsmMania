@@ -81,7 +81,7 @@ load_config:
     syscall
     
     # read the song.wav file and place it into memory
-    movq $512, %rcx
+    movq $1024, %rcx
     movq -48(%rbp), %rdx
     leaq -80(%rbp), %rsi
     movq -56(%rbp), %rdi
