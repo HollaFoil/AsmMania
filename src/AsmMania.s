@@ -737,11 +737,11 @@ handle_note_press:
     
     ok:
     incq 16(%rdi) # increment the streak
-    #movq 16(%rdi), %rsi
-    #movq 8(%rdi), %rdx
-    #cmpq %rdx, %rsi
-    #cmovl %rsi, %rdx
-    #movq %rdx, 8(%rdi)
+    movq 16(%rdi), %rsi
+    movq 8(%rdi), %rdx
+    cmpq %rdx, %rsi
+    cmovg %rsi, %rdx
+    movq %rdx, 8(%rdi)
     movq $2, %rsi
     movq -8(%rbp), %rdi
     leaq 32(%rdi), %rdi
@@ -754,6 +754,11 @@ handle_note_press:
 
     nice:
     incq 16(%rdi) # increment the streak
+    movq 16(%rdi), %rsi
+    movq 8(%rdi), %rdx
+    cmpq %rdx, %rsi
+    cmovg %rsi, %rdx
+    movq %rdx, 8(%rdi)
     movq $3, %rsi
     movq -8(%rbp), %rdi
     leaq 32(%rdi), %rdi
@@ -766,6 +771,11 @@ handle_note_press:
 
     perfect:
     incq 16(%rdi) # increment the streak
+    movq 16(%rdi), %rsi
+    movq 8(%rdi), %rdx
+    cmpq %rdx, %rsi
+    cmovg %rsi, %rdx
+    movq %rdx, 8(%rdi)
     movq $4, %rsi
     movq -8(%rbp), %rdi
     leaq 32(%rdi), %rdi
