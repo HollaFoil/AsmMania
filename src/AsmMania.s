@@ -79,6 +79,11 @@ player performance struct
 -600(%rbp) = max streak
 -608(%rbp) = score
 
+-616 = holding note lane 1 (-1 if not holding)
+-624 = holding note lane 2 (-1 if not holding)
+-632 = holding note lane 3 (-1 if not holding)
+-640 = holding note lane 4 (-1 if not holding)
+
 
 */
 
@@ -118,6 +123,11 @@ main:
     movq $1000, -472(%rbp)
     movq $1000, -480(%rbp)
     movq $1000, -488(%rbp)
+
+    movq $-1, -616(%rbp)
+    movq $-1, -624(%rbp)
+    movq $-1, -632(%rbp)
+    movq $-1, -640(%rbp)
 
     leaq -320(%rbp), %rdi
     leaq -328(%rbp), %rsi
@@ -371,6 +381,8 @@ main:
             movw 6(%rdi, %r15, 8), %si # skip if status = 1 (object hit)
             cmpq $2, %rsi
             jne dont_trim_slider
+            cmpl %r14d, 8(%rdi, %r15, 8)
+            jg dont_trim_slider
             movl %r14d, 8(%rdi, %r15, 8)
 
             cmpl %r14d, 12(%rdi, %r15, 8)
