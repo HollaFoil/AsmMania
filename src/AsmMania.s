@@ -380,8 +380,6 @@ main:
         leaq -48(%rbp), %rdi
         call draw_text
 
-        
-
         movq -592(%rbp), %rsi
         leaq -48(%rbp), %rdi
         call draw_current_streak
