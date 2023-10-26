@@ -3,7 +3,3 @@ maps/
 
 # ignore build files
 build/
-
-# ignore config
-config.txt
-AsmMania
