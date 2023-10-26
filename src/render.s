@@ -911,6 +911,7 @@ draw_text:
     pushq $perfect_length
     movq $perfect, %r9
     movq $LANE_HEIGHT, %r8
+    subq $100, %r8
     movq $500, %rcx
     movq -8(%rbp), %rdx
     movq -16(%rbp), %rsi
@@ -928,6 +929,7 @@ draw_text:
     pushq $nice_length
     movq $nice, %r9
     movq $LANE_HEIGHT, %r8
+    subq $100, %r8
     movq $500, %rcx
     movq -8(%rbp), %rdx
     movq -16(%rbp), %rsi
@@ -945,6 +947,7 @@ draw_text:
     pushq $ok_length
     movq $ok, %r9
     movq $LANE_HEIGHT, %r8
+    subq $100, %r8
     movq $500, %rcx
     movq -8(%rbp), %rdx
     movq -16(%rbp), %rsi
@@ -962,6 +965,7 @@ draw_text:
     pushq $missed_length
     movq $missed, %r9
     movq $LANE_HEIGHT, %r8
+    subq $100, %r8
     movq $500, %rcx
     movq -8(%rbp), %rdx
     movq -16(%rbp), %rsi
@@ -984,14 +988,31 @@ draw_hp_text:
     pushq (%rdi) # gc -8rbp
     pushq 8(%rdi) # wi -16
     pushq 16(%rdi) # di -24
-    subq $16, %rsp
+    movq %rsi, -48(%rbp)
+    subq $32, %rsp
 
     movq %rsi, %rdi
     leaq -32(%rbp), %rsi
     call int_to_string
     movq %rax, -40(%rbp)
 
-    movq $0xffc0cb, %rdx	# light red
+    # compute the red shade based on hp
+    movq $0x0000ff, %rax
+    movq -48(%rbp), %rsi
+    mulq %rsi
+    movq $100, %rsi
+    divq %rsi
+    movq %rax, %rcx
+    movq $0x00ff00, %rax
+    movq -48(%rbp), %rsi
+    mulq %rsi
+    movq $100, %rsi
+    divq %rsi
+    andq $0x00ff00, %rax
+    orq %rax, %rcx
+    orq $0xff0000, %rcx
+
+    movq %rcx, %rdx	# white / red
     movq -8(%rbp), %rsi	
     movq -24(%rbp), %rdi
 	call XSetForeground@PLT
@@ -1000,6 +1021,7 @@ draw_hp_text:
     pushq %rax
     leaq -32(%rbp), %r9
     movq $LANE_HEIGHT, %r8
+    subq $100, %r8
     movq $100, %rcx
     movq -8(%rbp), %rdx
     movq -16(%rbp), %rsi
@@ -1076,7 +1098,7 @@ draw_current_streak:
     pushq %rax
     leaq -72(%rbp), %r9
     movq $LANE_HEIGHT, %r8
-    subq $50, %r8
+    subq $150, %r8
     movq $500, %rcx
     movq -8(%rbp), %rdx
     movq -16(%rbp), %rsi
@@ -1113,7 +1135,7 @@ draw_current_score:
     pushq %rax
     leaq -32(%rbp), %r9
     movq $LANE_HEIGHT, %r8
-    subq $70, %r8
+    subq $170, %r8
     movq $500, %rcx
     movq -8(%rbp), %rdx
     movq -16(%rbp), %rsi
@@ -1123,4 +1145,3 @@ draw_current_score:
     movq %rbp, %rsp
     popq %rbp
     ret
-    
