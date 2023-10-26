@@ -1183,7 +1183,7 @@ draw_metadata:
     movq -24(%rbp), %rdi
 	call XSetForeground@PLT
 
-    movq $3, %rbx
+    movq $6, %rbx
     #movq $0, %r15
     draw_metadata_loop:
             movq -32(%rbp), %r9
@@ -1194,13 +1194,12 @@ draw_metadata:
             jne draw_metadata_substring_loop
 
         movq %rdi, %rax
-        decq %rax
         pushq %rax
         movq -32(%rbp), %r9
         incq %rdi
         addq %rdi, -32(%rbp)
         movq $30, %r8
-        movq $4, %rax
+        movq $6, %rax
         subq %rbx, %rax
         movq $15, %rdi
         mulq %rdi
