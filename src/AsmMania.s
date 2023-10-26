@@ -236,14 +236,24 @@ main:
         movq $1000, %rcx
         divq %rcx 
         movq %rax, %r8
+        pushq %r8
 
         leaq -304(%rbp), %rdi
         leaq -568(%rbp), %rsi
         movq -440(%rbp), %rdx
         movq -496(%rbp), %rcx
         leaq -608(%rbp), %r9
+        leaq -640(%rbp), %rax
+        pushq %rax
         call handle_hit
-    
+        popq %rax
+        popq %r8
+
+        leaq -304(%rbp), %rdi
+        movq %r8, %rsi
+        leaq -608(%rbp), %rdx
+        leaq -640(%rbp), %rcx
+        call handle_release
 
         leaq -24(%rbp), %rdi
         call time_since
@@ -379,12 +389,18 @@ main:
 
             movq $0, %rsi
             movw 6(%rdi, %r15, 8), %si # skip if status = 1 (object hit)
-            cmpq $2, %rsi
-            jne dont_trim_slider
+
             cmpl %r14d, 8(%rdi, %r15, 8)
             jg dont_trim_slider
-            movl %r14d, 8(%rdi, %r15, 8)
 
+            cmpq $2, %rsi
+            je trim_slider
+            cmpq $3, %rsi
+            je trim_slider
+            jmp dont_trim_slider
+
+            trim_slider:
+            movl %r14d, 8(%rdi, %r15, 8)
             cmpl %r14d, 12(%rdi, %r15, 8)
             jl next_obj
             dont_trim_slider:
@@ -578,33 +594,37 @@ RDX - hit object array address
 RCX - hit objects that have passed
 R8  - time since start of song (ms)
 R9  - player performance struct
+
+STACK1 - lanes holding struct
 */
 handle_hit:
+    pushq %rbp
+    movq %rsp, %rbp
     pushq %r12
     pushq %r13
     pushq %r14
     pushq %r15
-    pushq %rbp
-    movq %rsp, %rbp
 
     subq $64, %rsp
-    movq %rdi, -8(%rbp)
-    movq %rsi, -16(%rbp)
-    movq %rdx, -24(%rbp)
-    movq %rcx, -32(%rbp)
-    movq %r8, -40(%rbp)
-    movq %r9, -48(%rbp)
+    movq %rdi, -40(%rbp)
+    movq %rsi, -48(%rbp)
+    movq %rdx, -56(%rbp)
+    movq %rcx, -64(%rbp)
+    movq %r8, -72(%rbp)
+    movq %r9, -80(%rbp)
+    movq 16(%rbp), %rax
+    movq %rax, -88(%rbp)
 
-    movq -24(%rbp), %rdi
+    movq -56(%rbp), %rdi
     movq $0, %r9
     find_closest_obj_loop:
-        movq -32(%rbp), %r15
+        movq -64(%rbp), %r15
         movq $-20000, %r13
         movq $-1, %r8
         find_loop:
             movq $0, %rdx
             movl 8(%rdi, %r15, 8), %edx
-            subq -40(%rbp), %rdx
+            subq -72(%rbp), %rdx
 
             # Absolute value
             movq %rdx, %r12
@@ -648,10 +668,11 @@ handle_hit:
         je dont_set_status
 
         leaq (%rdi, %r8, 8), %rdi
-        movq -8(%rbp), %rsi
-        movq -16(%rbp), %rdx
+        movq -40(%rbp), %rsi
+        movq -48(%rbp), %rdx
         movq %r13, %rcx
-        movq -48(%rbp), %r8
+        movq -80(%rbp), %r8
+        movq -88(%rbp), %r9
         call set_obj_status_to_hit
 
         
@@ -665,27 +686,124 @@ handle_hit:
         jmp find_closest_obj_loop
     end_find_closest_obj_loop:
 
-    movq %rbp, %rsp
-    popq %rbp
+    addq $64, %rsp
     popq %r15
     popq %r14
     popq %r13
     popq %r12
+    movq %rbp, %rsp
+    popq %rbp
+ret
+
+/*
+RDI - currently pressed lanes (struct of 4 qw)
+RSI - time since start of song (ms)
+RDX - player performance struct
+RCX - lanes holding struct
+*/
+handle_release:
+    pushq %rbp
+    movq %rsp, %rbp
+    pushq %r12
+    pushq %r13
+    pushq %r14
+    pushq %r15
+
+    subq $32, %rsp
+    movq %rdi, -40(%rbp)
+    movq %rsi, -48(%rbp)
+    movq %rdx, -56(%rbp)
+    movq %rcx, -64(%rbp)
+
+    movq $24, %r9
+    handle_unholding_notes_loop:
+        movq -40(%rbp), %rdi
+        addq %r9, %rdi
+        cmpq $1, (%rdi)
+        je next_iter_release
+
+
+        movq -64(%rbp), %rdi
+        addq %r9, %rdi
+        cmpq $-1, (%rdi)
+        je next_iter_release
+        movq (%rdi), %r8
+        movq $-1, (%rdi)
+
+
+        movq $0, %rdx
+        movl 12(%r8), %edx
+        subq -48(%rbp), %rdx
+
+        # Absolute value
+        movq %rdx, %r12
+        movq %r12, %rax
+        sarq $63, %rax
+        movq %rax, %rdx
+        xorq %r12, %rdx
+        subq %rax, %rdx
+        
+        pushq %rdi
+        pushq %r9
+
+        movq %r8, %rdi
+        movq %rdx, %rsi
+        movq -56(%rbp), %rdx
+        call set_obj_status_to_released
+
+        popq %r9
+        popq %rdi
+
+        next_iter_release:
+        subq $8, %r9
+        cmpq $-8, %r9
+        je end_handle_unholding_notes_loop
+        jmp handle_unholding_notes_loop
+    end_handle_unholding_notes_loop:
+
+    addq $32, %rsp
+    popq %r15
+    popq %r14
+    popq %r13
+    popq %r12
+    movq %rbp, %rsp
+    popq %rbp
 ret
 
 /*
 %RDI - obj location
-%RSI - curr lanes pressed
-%RDX - prev lanes pressed
+%RSI - delay
+(%RDX) - player performance struct
+*/
+set_obj_status_to_released:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    movw $3, 6(%rdi)
+
+    # update text
+    # rsi = rsi
+    movq %rdx, %rdi
+    call handle_note_press
+
+    movq %rbp, %rsp
+    popq %rbp
+ret
+
+/*
+%RDI - obj location
+(%RSI) - curr lanes pressed
+(%RDX) - prev lanes pressed
 %RCX - delay
-(%r8) - player performance struct
+(%R8) - player performance struct
+(%R9) - lanes held struct
 */
 set_obj_status_to_hit:
     pushq %rbp
     movq %rsp, %rbp
 
     pushq %r8
-    subq $8, %rsp
+    pushq %r9
 
     movq $0, %rax
     movl (%rdi), %eax
@@ -706,21 +824,24 @@ set_obj_status_to_hit:
     jne end_set_obj
 
     pushq %rdi
-    pushq %rdi
+    pushq %rax
 
     # update text
-    movq %r12, %rsi
+    movq %rcx, %rsi
     movq -8(%rbp), %rdi
     call handle_note_press
 
-    popq %rdi
+    popq %rax
     popq %rdi
 
-    movw 4(%rdi), %ax
-    cmpw $1, %ax
+    movw 4(%rdi), %dx
+    cmpw $1, %dx
     jne set_status_regular_obj
 
     movw $2, 6(%rdi)
+    popq %r9
+    addq %rax, %r9
+    movq %rdi, (%r9)
     jmp end_set_obj
 
     set_status_regular_obj:
@@ -742,11 +863,11 @@ handle_note_press:
     pushq %rdi
     pushq %rdi
 
-    cmpq $7, %rsi
-    jle perfect
     cmpq $40, %rsi
+    jle perfect
+    cmpq $80, %rsi
     jle nice
-    cmpq $100, %rsi
+    cmpq $120, %rsi
     jle ok
 
     #missed:
