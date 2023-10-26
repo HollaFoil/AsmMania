@@ -1019,7 +1019,7 @@ handle_health:
     movq %rsp, %rbp
 
     movq (%rdi), %rdx
-    #addq %rsi, %rdx
+    addq %rsi, %rdx
     cmpq $0, %rdx
     jle dead
 
