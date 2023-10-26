@@ -49,6 +49,7 @@ format: .asciz "%ld\n"
 .global draw_text
 .global draw_hp_text
 .global draw_current_streak
+.global draw_current_score
 
 
 
@@ -1059,6 +1060,43 @@ draw_current_streak:
     pushq (%rdi) # gc -8rbp
     pushq 8(%rdi) # wi -16
     pushq 16(%rdi) # di -24
+    subq $48, %rsp
+
+    movq %rsi, %rdi
+    leaq -72(%rbp), %rsi
+    call int_to_string
+    movq %rax, -32(%rbp)
+
+    movq $0xffffff, %rdx	# White
+    movq -8(%rbp), %rsi	
+    movq -24(%rbp), %rdi
+	call XSetForeground@PLT
+
+    movq -32(%rbp), %rax
+    pushq %rax
+    leaq -72(%rbp), %r9
+    movq $LANE_HEIGHT, %r8
+    subq $50, %r8
+    movq $500, %rcx
+    movq -8(%rbp), %rdx
+    movq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call XDrawImageString@PLT
+
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
+# args:
+# %rdi - gc
+# %rsi - score
+draw_current_score:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    pushq (%rdi) # gc -8rbp
+    pushq 8(%rdi) # wi -16
+    pushq 16(%rdi) # di -24
     subq $16, %rsp
 
     movq %rsi, %rdi
@@ -1075,7 +1113,7 @@ draw_current_streak:
     pushq %rax
     leaq -32(%rbp), %r9
     movq $LANE_HEIGHT, %r8
-    subq $50, %r8
+    subq $70, %r8
     movq $500, %rcx
     movq -8(%rbp), %rdx
     movq -16(%rbp), %rsi
@@ -1085,3 +1123,4 @@ draw_current_streak:
     movq %rbp, %rsp
     popq %rbp
     ret
+    

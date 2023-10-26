@@ -4,6 +4,7 @@ format: .asciz "%ld\n"
 format2: .asciz "%ld %ld\n"
 format3: .asciz "%ld %ld %ld\n"
 final_streak_message: .asciz "Highest streak: %d\n"
+score_message: .asciz "Score: %d\n"
 
 /* RESERVED STACK SPACE = 640 BYTES
 -16(%rbp) = time since last frame in microseconds
@@ -343,6 +344,10 @@ main:
         leaq -48(%rbp), %rdi
         call draw_current_streak
 
+        movq -608(%rbp), %rsi
+        leaq -48(%rbp), %rdi
+        call draw_current_score
+
         pushq %r14
         pushq %r15
         leaq -456(%rbp), %rdi
@@ -435,19 +440,14 @@ main:
 
         jmp loop
 
-    dead:
-    movq -16(%rdi), %rsi
-    movq $final_streak_message, %rdi
-    movq $0, %rax
-    call printf
-    jmp end
+    
     song_end:
     movq -600(%rbp), %rsi
     movq $final_streak_message, %rdi
     movq $0, %rax
     call printf
     end:
-    movq -320(%rbp), %rdi
+    movq -320(%rbp), %rdi # wrong stack when dying
     call snd_pcm_drop@PLT
     movq -320(%rbp), %rdi
     call snd_pcm_close@PLT
@@ -738,6 +738,7 @@ handle_note_press:
     ok:
     incq 16(%rdi) # increment the streak
     movq 16(%rdi), %rsi
+    addq %rsi, (%rdi)
     movq 8(%rdi), %rdx
     cmpq %rdx, %rsi
     cmovg %rsi, %rdx
@@ -755,6 +756,7 @@ handle_note_press:
     nice:
     incq 16(%rdi) # increment the streak
     movq 16(%rdi), %rsi
+    addq %rsi, (%rdi)
     movq 8(%rdi), %rdx
     cmpq %rdx, %rsi
     cmovg %rsi, %rdx
@@ -772,6 +774,7 @@ handle_note_press:
     perfect:
     incq 16(%rdi) # increment the streak
     movq 16(%rdi), %rsi
+    addq %rsi, (%rdi)
     movq 8(%rdi), %rdx
     cmpq %rdx, %rsi
     cmovg %rsi, %rdx
@@ -857,6 +860,33 @@ handle_health:
     movq %rbp, %rsp
     popq %rbp
     ret
+
+dead:
+    subq $8, %rsp
+    pushq %rdi
+    movq -16(%rdi), %rsi
+    movq $final_streak_message, %rdi
+    movq $0, %rax
+    call printf
+
+    popq %rdi
+    pushq %rdi
+    movq -24(%rdi), %rsi
+    movq $score_message, %rdi
+    movq $0, %rax
+    call printf
+    
+    popq %rdi
+    pushq %rdi
+    movq 264(%rdi), %rdi # wrong stack when dying
+    call snd_pcm_drop@PLT
+    popq %rdi
+    pushq %rdi
+    movq 264(%rdi), %rdi
+    call snd_pcm_close@PLT
+
+    movq $0, %rdi
+    call exit
 
 # args:
 # %rdi - hit object address
