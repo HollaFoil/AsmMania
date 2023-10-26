@@ -10,7 +10,7 @@ file_mode: .asciz "r"
 # arguments:
 # %rdi - string of file path and name
 # %rsi - address to return the bytes_read
-# %rdx - offset
+# %rdx - offset (default 0)
 # %rcx - alignment (default 1)
 # output:
 # %rax - address to the allocated memory where the read contents of the file are

@@ -16,6 +16,8 @@ config: .asciz "config.txt"
 load_config:
     # stack:
     # -8(%rbp) pointer to return struct
+    # -16(%rbp) read_bytes of metadata
+    # -24(%rbp) metadata.txt
     # -32(%rbp) volume
     # -40(%rbp) pointer to hitsound file name
     # -48(%rbp) the offset
@@ -61,6 +63,21 @@ load_config:
     movq %rdi, -96(%rbp)
     addq $8, %rax # move the pointer to hit objects
     movq %rax, -72(%rbp)
+
+    # read the metadata file and place it into memory
+    movq $1, %rcx
+    movq $0, %rdx
+    leaq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call read_file
+    testq %rax, %rax
+    jz read_failed
+    
+    movq -16(%rbp), %rdx # how many bytes to read
+    movq %rax, %rsi # load the char address
+    movq $1, %rdi # 1 for stdout
+    movq $1, %rax # 1 for sys_write
+    syscall
     
     # read the song.wav file and place it into memory
     movq $512, %rcx
@@ -134,6 +151,7 @@ read_failed:
 # 8(%rsi) the offset
 # 16(%rsi) pointer to hitsound file name
 # 24(%rsi) volume
+# 32(%rsi) metadata.txt
 decode_config:
     # stack:
     # -8(%rbp) stores arg %rsi
@@ -176,6 +194,11 @@ decode_config:
     call convert_string_to_int
     movq -8(%rbp), %rsi
     movq %rax, 24(%rsi) # return the offset
+
+    leaq -16(%rbp), %rdi
+    call get_next_variable
+    movq -8(%rbp), %rsi
+    movq %rax, 32(%rsi) # return the pointer to metadata file name
 
     movq -24(%rbp), %rax # move map file pointer to %rax
     
