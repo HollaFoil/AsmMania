@@ -48,7 +48,7 @@ format: .asciz "%ld\n"
 .global draw_hit_object
 .global draw_text
 .global draw_hp_bar
-.global draw_current_streak
+.global draw_current_combo
 .global draw_current_score
 .global draw_metadata
 
@@ -522,6 +522,13 @@ draw_play_area:
     popq %rbp
 ret
 
+/*
+Draw the hit object
+(%rdi) - gc struct
+%rsi - lane
+%rdx - offset
+%rcx - optional slider offset
+*/
 draw_hit_object:
     pushq %rbp
     movq %rsp, %rbp
@@ -561,9 +568,11 @@ draw_hit_object:
     addq $LANE_WIDTH, %r15
     addq $LANE_SEPARATOR_WIDTH, %r15
 
+    # Check if it's a slider
     testl %ecx, %ecx
     jnz slider_select
 
+    # Check which lane the note belongs to
     movq -64(%rbp), %rax
     cmpb $0, %al
     je first_lane
@@ -585,174 +594,154 @@ draw_hit_object:
     cmpb $3, %al
     je fourth_lane_slider
 
-
+    # Draw the note
+    # The note offset in miliseconds directly maps to an offset from the finish line in pixels
     first_lane:
-    movq	-40(%rbp), %rdi	
-    movq	-56(%rbp), %rsi	
-	movq	$16765226, %rdx	# White
+    # Set the colour
+	movq	$0xFFD12A, %rdx	# RGB hex value for yellow
+    movq	-56(%rbp), %rsi
+    movq	-40(%rbp), %rdi
 	call	XSetForeground@PLT
 
-    movq -40(%rbp), %rdi
-    movq -48(%rbp), %rsi
-    movq -56(%rbp), %rdx
+    # Pass all the arguments of the visuals of the note
+    movq $BUTTON_HEIGHT, %r10
+    pushq %r10
+    movq $LANE_WIDTH, %r9
+    movq $TOP_LEFT_Y, %r8
+    addq $LANE_HEIGHT, %r8
+    subq -72(%rbp), %r8
+    subq $BUTTON_HEIGHT, %r8
     movq $TOP_LEFT_X, %rcx
     addq $BORDER_WIDTH, %rcx
-    movq $TOP_LEFT_Y, %r8
-    addq $LANE_HEIGHT, %r8
-    subq -72(%rbp), %r8
-    subq $BUTTON_HEIGHT, %r8
-    movq $LANE_WIDTH, %r9
-    movq $BUTTON_HEIGHT, %r10
-    pushq %r10
+    
     jmp finish_drawing
 
-
     second_lane:
-    movq	-40(%rbp), %rdi	
-    movq	-56(%rbp), %rsi	
-	movq	$16675841, %rdx	# White
+	movq	$0xFE7401, %rdx	# Orange
+    movq	-56(%rbp), %rsi
+    movq	-40(%rbp), %rdi
 	call	XSetForeground@PLT
 
-    movq -40(%rbp), %rdi
-    movq -48(%rbp), %rsi
-    movq -56(%rbp), %rdx
-    movq %r12, %rcx
+    movq $BUTTON_HEIGHT, %r10
+    pushq %r10
+    movq $LANE_WIDTH, %r9
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
     subq $BUTTON_HEIGHT, %r8
     subq -72(%rbp), %r8
-    movq $LANE_WIDTH, %r9
-    movq $BUTTON_HEIGHT, %r10
-    pushq %r10
+    movq %r12, %rcx
     jmp finish_drawing
 
     third_lane:
-    movq	-40(%rbp), %rdi	
+	movq	$0xE22560, %rdx	# Red
     movq	-56(%rbp), %rsi	
-	movq	$14820704, %rdx	# White
+    movq	-40(%rbp), %rdi	
 	call	XSetForeground@PLT
 
-    movq -40(%rbp), %rdi
-    movq -48(%rbp), %rsi
-    movq -56(%rbp), %rdx
-    movq %r13, %rcx
+    movq $BUTTON_HEIGHT, %r10
+    pushq %r10
+    movq $LANE_WIDTH, %r9
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
     subq $BUTTON_HEIGHT, %r8
     subq -72(%rbp), %r8
-    movq $LANE_WIDTH, %r9
-    movq $BUTTON_HEIGHT, %r10
-    pushq %r10
+    movq %r13, %rcx
     jmp finish_drawing
 
-
     fourth_lane:
-    movq	-40(%rbp), %rdi	
+	movq	$0xDA40FA, %rdx	# Purple
     movq	-56(%rbp), %rsi	
-	movq	$14303482, %rdx	# White
+    movq	-40(%rbp), %rdi	
 	call	XSetForeground@PLT
 
-    movq -40(%rbp), %rdi
-    movq -48(%rbp), %rsi
-    movq -56(%rbp), %rdx
-    movq %r14, %rcx
+    movq $BUTTON_HEIGHT, %r10
+    pushq %r10
+    movq $LANE_WIDTH, %r9
     movq $TOP_LEFT_Y, %r8
     addq $LANE_HEIGHT, %r8
     subq $BUTTON_HEIGHT, %r8
     subq -72(%rbp), %r8
-    movq $LANE_WIDTH, %r9
-    movq $BUTTON_HEIGHT, %r10
-    pushq %r10
+    movq %r14, %rcx
     jmp finish_drawing
 
     first_lane_slider:
-    movq	-40(%rbp), %rdi	
-    movq	-56(%rbp), %rsi	
-	movq	$16765226, %rdx	# White
+    movq	$0xFFD12A, %rdx	# RGB hex value for yellow
+    movq	-56(%rbp), %rsi
+    movq	-40(%rbp), %rdi
 	call	XSetForeground@PLT
 
-    movq -40(%rbp), %rdi
-    movq -48(%rbp), %rsi
-    movq -56(%rbp), %rdx
+    movq -80(%rbp), %r10
+    subq -72(%rbp), %r10
+    addq $BUTTON_HEIGHT, %r10
+    pushq %r10
+    movq $LANE_WIDTH, %r9
+    movq $TOP_LEFT_Y, %r8
+    addq $LANE_HEIGHT, %r8
+    subq $BUTTON_HEIGHT, %r8
+    subq -80(%rbp), %r8
     movq $TOP_LEFT_X, %rcx
     addq $BORDER_WIDTH, %rcx
-    movq $TOP_LEFT_Y, %r8
-    addq $LANE_HEIGHT, %r8
-    subq $BUTTON_HEIGHT, %r8
-    subq -80(%rbp), %r8
-    movq $LANE_WIDTH, %r9
-    movq -80(%rbp), %r10
-    subq -72(%rbp), %r10
-    addq $BUTTON_HEIGHT, %r10
-    pushq %r10
     jmp finish_drawing
 
-
     second_lane_slider:
-    movq	-40(%rbp), %rdi	
-    movq	-56(%rbp), %rsi	
-	movq	$16675841, %rdx	# White
+    movq	$0xFE7401, %rdx	# Orange
+    movq	-56(%rbp), %rsi
+    movq	-40(%rbp), %rdi
 	call	XSetForeground@PLT
 
-    movq -40(%rbp), %rdi
-    movq -48(%rbp), %rsi
-    movq -56(%rbp), %rdx
-    movq %r12, %rcx
-    movq $TOP_LEFT_Y, %r8
-    addq $LANE_HEIGHT, %r8
-    subq -80(%rbp), %r8
-    subq $BUTTON_HEIGHT, %r8
-    movq $LANE_WIDTH, %r9
     movq -80(%rbp), %r10
     subq -72(%rbp), %r10
     addq $BUTTON_HEIGHT, %r10
     pushq %r10
+    movq $LANE_WIDTH, %r9
+    movq $TOP_LEFT_Y, %r8
+    addq $LANE_HEIGHT, %r8
+    subq -80(%rbp), %r8
+    subq $BUTTON_HEIGHT, %r8
+    movq %r12, %rcx
     jmp finish_drawing
 
     third_lane_slider:
-    movq	-40(%rbp), %rdi	
+    movq	$0xE22560, %rdx	# Red
     movq	-56(%rbp), %rsi	
-	movq	$14820704, %rdx	# White
+    movq	-40(%rbp), %rdi	
 	call	XSetForeground@PLT
 
-    movq -40(%rbp), %rdi
-    movq -48(%rbp), %rsi
-    movq -56(%rbp), %rdx
-    movq %r13, %rcx
-    movq $TOP_LEFT_Y, %r8
-    addq $LANE_HEIGHT, %r8
-    subq -80(%rbp), %r8
-    subq $BUTTON_HEIGHT, %r8
-    movq $LANE_WIDTH, %r9
     movq -80(%rbp), %r10
     subq -72(%rbp), %r10
     addq $BUTTON_HEIGHT, %r10
     pushq %r10
+    movq $LANE_WIDTH, %r9
+    movq $TOP_LEFT_Y, %r8
+    addq $LANE_HEIGHT, %r8
+    subq -80(%rbp), %r8
+    subq $BUTTON_HEIGHT, %r8
+    movq %r13, %rcx
     jmp finish_drawing
 
 
     fourth_lane_slider:
-    movq	-40(%rbp), %rdi	
+    movq	$0xDA40FA, %rdx	# Purple
     movq	-56(%rbp), %rsi	
-	movq	$14303482, %rdx	# White
+    movq	-40(%rbp), %rdi	
 	call	XSetForeground@PLT
 
-    movq -40(%rbp), %rdi
-    movq -48(%rbp), %rsi
-    movq -56(%rbp), %rdx
-    movq %r14, %rcx
-    movq $TOP_LEFT_Y, %r8
-    addq $LANE_HEIGHT, %r8
-    subq -80(%rbp), %r8
-    subq $BUTTON_HEIGHT, %r8
-    movq $LANE_WIDTH, %r9
     movq -80(%rbp), %r10
     subq -72(%rbp), %r10
     addq $BUTTON_HEIGHT, %r10
     pushq %r10
+    movq $LANE_WIDTH, %r9
+    movq $TOP_LEFT_Y, %r8
+    addq $LANE_HEIGHT, %r8
+    subq -80(%rbp), %r8
+    subq $BUTTON_HEIGHT, %r8
+    movq %r14, %rcx
 
     finish_drawing:
-
+    # Pass the window arguments
+    movq -56(%rbp), %rdx
+    movq -48(%rbp), %rsi
+    movq -40(%rbp), %rdi
     call XFillRectangle@PLT
 
     # move the stack pointer to %r15-%r12 registers and pop them
@@ -789,7 +778,7 @@ lerp:
     popq %r15
 ret
 
-
+# Status messages and their lengths
 perfect: .asciz "Perfect!"
 perfect_end:
 .equ perfect_length, perfect_end - perfect - 1
@@ -802,31 +791,38 @@ ok_end:
 missed: .asciz "Missed"
 missed_end:
 .equ missed_length, missed_end - missed - 1
-# args:
-# %rdi - gc struct
-# (%rsi) - text_state
+
+/*
+Draws the status message
+%rdi - gc struct
+(%rsi) - text_state
+*/
 draw_text:
     pushq %rbp
     movq %rsp, %rbp
 
+    # Check if there is any frames left to draw
     cmpl $0, (%rsi)
     je dont_draw_text
 
-    pushq (%rdi) # gc -8rbp
-    pushq 8(%rdi) # wi -16
-    pushq 16(%rdi) # di -24
+    pushq (%rdi) # gc -8(%rbp)
+    pushq 8(%rdi) # window -16(%rbp)
+    pushq 16(%rdi) # display -24(%rbp)
 
+    # Decrement the frame counter
     decl (%rsi)
 
+    # Determine which status message to draw based on the flag
     cmpl $1, 4(%rsi)
-    je draw_ok
-    cmpl $2, 4(%rsi)
-    je draw_nice
-    cmpl $3, 4(%rsi)
-    je draw_perfect
-    cmpl $4, 4(%rsi)
     je draw_missed
+    cmpl $2, 4(%rsi)
+    je draw_ok
+    cmpl $3, 4(%rsi)
+    je draw_nice
+    cmpl $4, 4(%rsi)
+    je draw_perfect
 
+    # Draw the status message
     draw_perfect:
  
 	movq $0x00ffff, %rdx	# Cyan
@@ -904,9 +900,11 @@ draw_text:
     popq %rbp
     ret
 
-# args:
-# %rdi - gc
-# %rsi - hp integer
+/*
+Draws the health bar
+(%rdi) - gc struct
+%rsi - hp
+*/
 draw_hp_bar:
     pushq %rbp
     movq %rsp, %rbp
@@ -917,6 +915,7 @@ draw_hp_bar:
     movq %rsi, -48(%rbp)
     subq $32, %rsp
 
+    # Convert the hp integer to a string
     movq %rsi, %rdi
     leaq -32(%rbp), %rsi
     call int_to_string
@@ -938,17 +937,20 @@ draw_hp_bar:
     orq %rax, %rcx
     orq $0xff0000, %rcx
 
+    # Set the colour
     movq %rcx, %rdx	# white / red
     movq -8(%rbp), %rsi	
     movq -24(%rbp), %rdi
 	call XSetForeground@PLT
 
+    # Compute the size of the bar
     movq $640, %rax
     movq -48(%rbp), %rdi
     mulq %rdi
     movq $100, %rdi
     divq %rdi
 
+    # Draw the health bar
     pushq $10
     movq %rax, %r9
     movq $0, %r8
@@ -957,26 +959,22 @@ draw_hp_bar:
     movq -16(%rbp), %rsi
     movq -24(%rbp), %rdi
     call XFillRectangle@PLT
-    /*
-    movq -40(%rbp), %rax
-    pushq %rax
-    leaq -32(%rbp), %r9
-    movq $LANE_HEIGHT, %r8
-    subq $100, %r8
-    movq $100, %rcx
-    movq -8(%rbp), %rdx
-    movq -16(%rbp), %rsi
-    movq -24(%rbp), %rdi
-    call XDrawImageString@PLT
-    */
+
     movq %rbp, %rsp
     popq %rbp
     ret
 
+/*
+Converts int to string
+%rdi - integer
+(%rsi) - address of where to save the string
+return - the number of characters in the string
+*/
 int_to_string:
     pushq %rbp
     movq %rsp, %rbp
 
+    # Convert the integer to a character array
     movq %rdi, %rax
     movq $0, %rdi
     movq $10, %rcx
@@ -992,6 +990,7 @@ int_to_string:
     
     pushq %rdi
     
+    # Reverse the character array
     movq $0, %rdx
     loop_reverse_string:
         decq %rdi
@@ -1013,28 +1012,33 @@ int_to_string:
     ret
 
 
-# args:
-# %rdi - gc
-# %rsi - streak
-draw_current_streak:
+/*
+Draws the current combo
+(%rdi) - gc struct
+%rsi - combo
+*/
+draw_current_combo:
     pushq %rbp
     movq %rsp, %rbp
 
-    pushq (%rdi) # gc -8rbp
-    pushq 8(%rdi) # wi -16
-    pushq 16(%rdi) # di -24
+    pushq (%rdi) # gc -8(%rbp)
+    pushq 8(%rdi) # wi -16(%rbp)
+    pushq 16(%rdi) # di -24(%rbp)
     subq $48, %rsp
 
+    # Convert the combo integer to a string
     movq %rsi, %rdi
     leaq -72(%rbp), %rsi
     call int_to_string
     movq %rax, -32(%rbp)
 
+    # Set the colour
     movq $0xffffff, %rdx	# White
     movq -8(%rbp), %rsi	
     movq -24(%rbp), %rdi
 	call XSetForeground@PLT
 
+    # Draw the combo
     movq -32(%rbp), %rax
     pushq %rax
     leaq -72(%rbp), %r9
@@ -1050,28 +1054,33 @@ draw_current_streak:
     popq %rbp
     ret
 
-# args:
-# %rdi - gc
-# %rsi - score
+/*
+Draws the current string
+(%rdi) - gc struct
+%rsi - score
+*/
 draw_current_score:
     pushq %rbp
     movq %rsp, %rbp
 
-    pushq (%rdi) # gc -8rbp
-    pushq 8(%rdi) # wi -16
-    pushq 16(%rdi) # di -24
+    pushq (%rdi) # gc -8(%rbp)
+    pushq 8(%rdi) # wi -16(%rbp)
+    pushq 16(%rdi) # di -24(%rbp)
     subq $16, %rsp
 
+    # Convert the score integer to a string
     movq %rsi, %rdi
     leaq -32(%rbp), %rsi
     call int_to_string
     movq %rax, -40(%rbp)
 
+    # Set the colour
     movq $0xffffff, %rdx	# White
     movq -8(%rbp), %rsi	
     movq -24(%rbp), %rdi
 	call XSetForeground@PLT
 
+    # Draw the score
     movq -40(%rbp), %rax
     pushq %rax
     leaq -32(%rbp), %r9
@@ -1087,29 +1096,33 @@ draw_current_score:
     popq %rbp
     ret
 
-# args:
-# %rdi - gc
-# %rsi - metadata
-# %rdx - number of chars
+/*
+Draw the metadata of the map
+(%rdi) - gc struct
+(%rsi) - metadata string
+%rdx - number of chars
+*/
 draw_metadata:
     pushq %rbp
     movq %rsp, %rbp
 
-    pushq (%rdi) # gc -8rbp
-    pushq 8(%rdi) # wi -16
-    pushq 16(%rdi) # di -24
-    pushq %rsi # -32
-    pushq %rdx # -40
+    # Push the arguments to the stack and save callee saved reg %rbx
+    pushq (%rdi) # gc -8(%rbp)
+    pushq 8(%rdi) # wi -16(%rbp)
+    pushq 16(%rdi) # di -24(%rbp)
+    pushq %rsi # -32(%rbp)
+    pushq %rdx # -40(%rbp)
     pushq %rbx
-    pushq %r15
+    subq $8, %rsp
 
-    movq $0xffffff, %rdx	# White
+    # Set the colour
+    movq $0xffffff, %rdx # White
     movq -8(%rbp), %rsi	
     movq -24(%rbp), %rdi
 	call XSetForeground@PLT
 
+    # Splits the metadata into six lines at '\n' and prints them below each other
     movq $6, %rbx
-    #movq $0, %r15
     draw_metadata_loop:
             movq -32(%rbp), %r9
             movq $0, %rdi
@@ -1118,6 +1131,7 @@ draw_metadata:
             cmpb $10, (%r9, %rdi)
             jne draw_metadata_substring_loop
 
+        # Draws the line
         movq %rdi, %rax
         pushq %rax
         movq -32(%rbp), %r9
@@ -1138,7 +1152,7 @@ draw_metadata:
         decq %rbx
         jnz draw_metadata_loop
 
-    popq %r15
+    addq $8, %rsp
     popq %rbx
     movq %rbp, %rsp
     popq %rbp

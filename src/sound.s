@@ -1,12 +1,13 @@
 .global play_sound_fx
 .global set_hit_sound_volume
 
+# Overlays the hit sound on top of the song
+#
 # arguments:
 # %rdi: sound fx address
 # %rsi: sound fx size in bytes
 # %rdx: music address
 # %rcx: current song offset
-
 play_sound_fx:
     pushq %rbp
     movq %rsp, %rbp
@@ -16,7 +17,7 @@ play_sound_fx:
     movw $0x7FFF, %r10w # INT_MAX
     movw $0x8001, %r11w # INT_MIN
 
-    # adds the sound waves
+    # Add the sound waves
     loop_overlay:
         movw (%rdi), %r8w
         movw (%rdx, %rcx, 1), %r9w
@@ -36,6 +37,7 @@ play_sound_fx:
     popq %rbp
     ret
 
+# Set the volume of the hit_sound
 # arguments:
 # %rdi: sound fx address
 # %rsi: sound fx size in bytes
@@ -44,6 +46,7 @@ set_hit_sound_volume:
     pushq %rbp
     movq %rsp, %rbp
 
+    # Lower each sample by amount specified in config
     movq %rdx, %rcx
     movw $100, %r9w
     loop_volume:

@@ -37,7 +37,7 @@ load_config:
 
     movq %rdi, -8(%rbp)
 
-    # read the config file
+    # Read the config file
     movq $1, %rcx
     movq $0, %rdx
     leaq -64(%rbp), %rsi
@@ -46,12 +46,12 @@ load_config:
     testq %rax, %rax
     jz read_failed
 
-    # decode the string
+    # Decode the string
     leaq -56(%rbp), %rsi
     movq %rax, %rdi
     call decode_config
 
-    # read the map file and place it into memory
+    # Read the map file and place it into memory and save the pointer in stack
     movq $1, %rcx
     movq $0, %rdx
     leaq -64(%rbp), %rsi
@@ -59,12 +59,14 @@ load_config:
     call read_file
     testq %rax, %rax
     jz read_failed
-    movq (%rax), %rdi # copy the preview_time
+    # Get the preview_time (not used)
+    movq (%rax), %rdi 
     movq %rdi, -96(%rbp)
-    addq $8, %rax # move the pointer to hit objects
+    # Move the pointer to hit objects
+    addq $8, %rax 
     movq %rax, -72(%rbp)
 
-    # read the metadata file and place it into memory
+    # Read the metadata file and place it into memory and save the pointer in stack
     movq $1, %rcx
     movq $0, %rdx
     leaq -16(%rbp), %rsi
@@ -74,13 +76,13 @@ load_config:
     jz read_failed
     movq %rax, -24(%rbp)
     
-    movq -16(%rbp), %rdx # how many bytes to read
+    movq -16(%rbp), %rdx # how many bytes to print
     movq %rax, %rsi # load the char address
     movq $1, %rdi # 1 for stdout
     movq $1, %rax # 1 for sys_write
     syscall
     
-    # read the song.wav file and place it into memory
+    # Read the song.wav file, place it into memory and save the pointer in stack
     movq $1024, %rcx
     movq -48(%rbp), %rdx
     leaq -80(%rbp), %rsi
@@ -90,12 +92,13 @@ load_config:
     jz read_failed
     movq %rax, -88(%rbp)
 
+    # Read the hit_sound file, place it into memory and save the pointer in stack
     movq $1, %rcx
     movq $0, %rdx
     leaq -104(%rbp), %rsi
     movq -40(%rbp), %rdi
     call read_file
-    movq %rax, -112(%rbp) # save address of sound fx
+    movq %rax, -112(%rbp) 
 
     movq -32(%rbp), %rdx
     movq -104(%rbp), %rsi
@@ -172,49 +175,54 @@ decode_config:
     
     subq $32, %rsp
 
+    # Get the pointer to map file name and save it in stack
     leaq -16(%rbp), %rdi
     call get_next_variable
-    movq %rax, -24(%rbp) # temporarily save pointer to map file name
+    movq %rax, -24(%rbp) 
 
+    # Get the pointer to song file name and return it
     leaq -16(%rbp), %rdi
     call get_next_variable
     movq -8(%rbp), %rsi
-    movq %rax, (%rsi) # return the pointer to song file name
+    movq %rax, (%rsi) 
     
-    # get offset and convert it to an integer
+    # Get offset, convert it to an integer and return it
     leaq -16(%rbp), %rdi
     call get_next_variable 
     movq %rax, %rdi
     call convert_string_to_int
     movq -8(%rbp), %rsi
-    movq %rax, 8(%rsi) # return the offset
+    movq %rax, 8(%rsi)
 
+    # Get the pointer to hit sound file name and return it
     leaq -16(%rbp), %rdi
     call get_next_variable
     movq -8(%rbp), %rsi
-    movq %rax, 16(%rsi) # return the pointer to hit sound file name
+    movq %rax, 16(%rsi) 
 
-    # get volume and convert it to an integer
+    # Get volume, convert it to an integer and return it
     leaq -16(%rbp), %rdi
     call get_next_variable 
     movq %rax, %rdi
     call convert_string_to_int
     movq -8(%rbp), %rsi
-    movq %rax, 24(%rsi) # return the offset
+    movq %rax, 24(%rsi)
 
+    # Get the pointer to metadata file name and return it
     leaq -16(%rbp), %rdi
     call get_next_variable
     movq -8(%rbp), %rsi
-    movq %rax, 32(%rsi) # return the pointer to metadata file name
+    movq %rax, 32(%rsi) 
 
-    movq -24(%rbp), %rax # move map file pointer to %rax
+    # Return the map file pointer in %rax
+    movq -24(%rbp), %rax 
     
     movq %rbp, %rsp
     popq %rbp
     ret
 
-# argument: address of pointer to config, which gets updated
-# returns a pointer to the next variable in %rax
+# Argument: address of pointer to config, which gets updated
+# Returns a pointer to the next variable in %rax
 get_next_variable:
     pushq %rbp
     movq %rsp, %rbp
@@ -223,10 +231,12 @@ get_next_variable:
         movq (%rdi), %rsi
         movb (%rsi), %dl
         incq (%rdi)
-        cmpb $58, %dl # check if :
+        # check if char is ':'
+        cmpb $58, %dl 
         jne skip_to_string_start_loop
-        
-    movq (%rdi), %rax # save the pointer to string
+    
+    # Save the pointer to string
+    movq (%rdi), %rax
 
     skip_to_string_end_loop:
         incq (%rdi)
@@ -235,10 +245,11 @@ get_next_variable:
         cmpb $10, %dl # check if \n
         jne skip_to_string_end_loop
 
-    # replace the newline with a null byte so that the relevant info becomes a string :D
+    # Replace the newline with a null byte so that the relevant info becomes a string :D
     movq (%rdi), %rsi
     movb $0, (%rsi)
-    incq (%rdi) # move pointer to the next line
+    # Move pointer to the next line
+    incq (%rdi) 
 
     movq %rbp, %rsp
     popq %rbp

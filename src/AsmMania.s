@@ -3,7 +3,7 @@
 format: .asciz "%ld\n"
 format2: .asciz "%ld %ld\n"
 format3: .asciz "%ld %ld %ld\n"
-final_streak_message: .asciz "Highest combo: %d\n"
+final_combo_message: .asciz "Highest combo: %d\n"
 score_message: .asciz "Score: %d\n"
 lost_message: .asciz "You lost!\n"
 map_cleared_message: .asciz "You have cleared the map!\n"
@@ -56,12 +56,7 @@ map_cleared_message: .asciz "You have cleared the map!\n"
 -496       = first object to draw
 
 
-
 -520       = num of events
-
-
-
-
 
 
 
@@ -73,16 +68,14 @@ map_cleared_message: .asciz "You have cleared the map!\n"
 player performance struct
 -576(%rbp) = text_state
 -584(%rbp) = hp
--592(%rbp) = current streak
--600(%rbp) = max streak
+-592(%rbp) = current combo
+-600(%rbp) = max combo
 -608(%rbp) = score
 
 -616 = holding note lane 1 (-1 if not holding)
 -624 = holding note lane 2 (-1 if not holding)
 -632 = holding note lane 3 (-1 if not holding)
 -640 = holding note lane 4 (-1 if not holding)
-
-
 */
 
 .text
@@ -252,7 +245,7 @@ main:
         je should_not_advance_song
         addq $1024, -408(%rbp)
 
-        # Sometimes pcm throws error code -32, underrun
+        # Sometimes pcm throws error code -32 - underrun
         cmpq $0, %rax
         je no_event
 
@@ -392,7 +385,7 @@ main:
 
         movq -592(%rbp), %rsi
         leaq -48(%rbp), %rdi
-        call draw_current_streak
+        call draw_current_combo
 
         movq -608(%rbp), %rsi
         leaq -48(%rbp), %rdi
@@ -450,7 +443,7 @@ main:
 
             # Get the height/hit time of the hit object
             movq $0, %rdx
-            movl 8(%rdi, %r15, 8), %extend
+            movl 8(%rdi, %r15, 8), %edx
             # Get the time offset since the start of the song
             subq %r14, %rdx
 
@@ -523,23 +516,27 @@ main:
         # Jump back to the start of the game loop
         jmp loop
 
-    
+    # After song has finished, exit the program
     song_end:
+    # Print map cleared message in the terminal
     movq $map_cleared_message, %rdi
     movq $0, %rax
     call printf
 
+    # Print final score
     movq -608(%rbp), %rsi
     movq $score_message, %rdi
     movq $0, %rax
     call printf
 
+    # Print max combo
     movq -600(%rbp), %rsi
-    movq $final_streak_message, %rdi
+    movq $final_combo_message, %rdi
     movq $0, %rax
     call printf
 
     end:
+    # Play the remaining samples in the buffer, close the PCM handle and exit
     movq -320(%rbp), %rdi
     call snd_pcm_drain@PLT
     movq -320(%rbp), %rdi
@@ -903,17 +900,19 @@ set_obj_status_to_hit:
     popq %rbp
 ret
 
-
-# args:
-# (%rdi) - player_performance obj address
-# %rsi - delay of keypress
+/*
+(%rdi) - player_performance struct
+%rsi - absolute delay of keypress
+*/
 handle_note_press:
     pushq %rbp
     movq %rsp, %rbp
 
-    pushq %rdi
+    # Save the struct in stack
+    pushq %rdi # -8(%rbp)
     pushq %rdi
 
+    # Determine the accuracy based on delay
     cmpq $40, %rsi
     jle perfect
     cmpq $80, %rsi
@@ -921,120 +920,112 @@ handle_note_press:
     cmpq $120, %rsi
     jle ok
 
-    #missed:
-    movq $0, 16(%rdi) # reset the streak
+    # Missed: reset combo, lower health, set to display the "Missed" text
+    movq $0, 16(%rdi)
+    # Set the flag for miss and update the text status
     movq $1, %rsi
     movq -8(%rbp), %rdi
     leaq 32(%rdi), %rdi
     call set_text_status
+    # Lower the health
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     movq $-3, %rsi
     call handle_health
+
     jmp end_set_handle_note_press
     
+    # Increment combo, don't change health, set to display the "Ok" text
     ok:
-    incq 16(%rdi) # increment the streak
+    # Increment the combo
+    incq 16(%rdi)
+    # Update the max combo
     movq 16(%rdi), %rsi
     addq %rsi, (%rdi)
     movq 8(%rdi), %rdx
     cmpq %rdx, %rsi
     cmovg %rsi, %rdx
     movq %rdx, 8(%rdi)
+    # Set the flag for ok and update the text status
     movq $2, %rsi
     movq -8(%rbp), %rdi
     leaq 32(%rdi), %rdi
     call set_text_status
-    movq -8(%rbp), %rdi
-    leaq 24(%rdi), %rdi
-    movq $0, %rsi
-    call handle_health
+
     jmp end_set_handle_note_press
 
+    # Increment combo, increment health, set to display the "Nice!" text
     nice:
-    incq 16(%rdi) # increment the streak
+    incq 16(%rdi)
+    # Update the max combo
     movq 16(%rdi), %rsi
     addq %rsi, (%rdi)
     movq 8(%rdi), %rdx
     cmpq %rdx, %rsi
     cmovg %rsi, %rdx
     movq %rdx, 8(%rdi)
+    # Set the flag for nice and update the text status
     movq $3, %rsi
     movq -8(%rbp), %rdi
     leaq 32(%rdi), %rdi
     call set_text_status
+    # Increase the health
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     movq $1, %rsi
     call handle_health
+
     jmp end_set_handle_note_press
 
+    # Increment combo, increment health by 2, set to display the "Perfect!" text
     perfect:
-    incq 16(%rdi) # increment the streak
+    incq 16(%rdi)
+    # Update the max combo
     movq 16(%rdi), %rsi
     addq %rsi, (%rdi)
     movq 8(%rdi), %rdx
     cmpq %rdx, %rsi
     cmovg %rsi, %rdx
     movq %rdx, 8(%rdi)
+    # Set the flag for perfect and update the text status
     movq $4, %rsi
     movq -8(%rbp), %rdi
     leaq 32(%rdi), %rdi
     call set_text_status
+    # Increase the health
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     movq $2, %rsi
     call handle_health
-
 
     end_set_handle_note_press:
     movq %rbp, %rsp
     popq %rbp
     ret
 
-# args:
-# (%rdi) - text_state obj address
-# First 32 bits specify string
-# 0 - no text, 1 - Ok, 2 - Nice!, 3 - Perfect!, 4 - missed perhaps
-# Last 32 bits specify frames left to draw
-# %rsi - miss/ok/nice/perfect 1-4
+/*
+Update the hit status
+args:
+(%rdi) - text_state obj address
+First 32 bits specify string
+0 - no text, 1 - Ok, 2 - Nice!, 3 - Perfect!, 4 - Missed
+Last 32 bits specify frames left to draw
+%rsi - miss/ok/nice/perfect 1-4
+*/
 set_text_status:
     pushq %rbp
     movq %rsp, %rbp
 
-    cmpq $4, %rsi
-    je set_perfect
-    cmpq $3, %rsi
-    je set_nice
-    cmpq $2, %rsi
-    je set_ok
-
-    set_missed:
-    movq $4, %rsi
-    jmp end_set_text
-    
-    set_ok:
-    movq $1, %rsi
-    jmp end_set_text
-
-    set_nice:
-    movq $2, %rsi
-    jmp end_set_text
-
-    set_perfect:
-    movq $3, %rsi
-    jmp end_set_text
-
-
-    end_set_text:
     shlq $32, %rsi
-    addq $60, %rsi # how many frames to last
+    # How many frames for message to display
+    addq $60, %rsi 
     movq %rsi, (%rdi)
 
     movq %rbp, %rsp
     popq %rbp
     ret
 
+# Updates the health, ends game if hp goes to 0
 # args:
 # (%rdi) - global hp address
 # %rsi - hp lost or gained
@@ -1042,27 +1033,35 @@ handle_health:
     pushq %rbp
     movq %rsp, %rbp
 
+    # Copy hp, modify the copy and check if it's 0 or less
     movq (%rdi), %rdx
     addq %rsi, %rdx
     cmpq $0, %rdx
     jle dead
 
+    # Ensures that hp doesn't go above 100
     cmpq $100, %rdx
     jle no_health_overflow
 
     movq $100, %rdx
 
     no_health_overflow:
+    # Update the global hp
     movq %rdx, (%rdi)
 
     movq %rbp, %rsp
     popq %rbp
     ret
 
+/*
+Prints the lost_message, final score, max combo and exits the program
+(%rdi) - health address
+*/
 dead:
     subq $8, %rsp
     pushq %rdi
 
+    # Print the messages
     movq $lost_message, %rdi
     movq $0, %rax
     call printf
@@ -1077,15 +1076,16 @@ dead:
     popq %rdi
     pushq %rdi
     movq -16(%rdi), %rsi
-    movq $final_streak_message, %rdi
+    movq $final_combo_message, %rdi
     movq $0, %rax
     call printf
 
+    # Play the remaining samples in the buffer
     popq %rdi
     pushq %rdi
-    movq 264(%rdi), %rdi # why do we use the stack instead of .data?
+    movq 264(%rdi), %rdi
     call snd_pcm_drain@PLT
-  
+    # Close the PCM handle
     popq %rdi
     pushq %rdi
     movq 264(%rdi), %rdi
@@ -1094,67 +1094,100 @@ dead:
     movq $0, %rdi
     call exit
 
-# args:
-# %rdi - hit object address
-# %rsi - note offset
-# %rdx - slider end offset
-# %rcx - player_perf struct
+/*
+# Checks if a note below a certain treshold hasn't been hit and triggers a miss in that case
+%rdi - hit object address
+%rsi - note offset
+%rdx - slider end offset
+%rcx - player_performance struct
+*/
 check_for_miss:
     pushq %rbp
     movq %rsp, %rbp
 
-    pushq %rcx #-8%rbp
+    # Save the player_perfomance struct
+    pushq %rcx # -8(%rbp)
     subq $8, %rsp
 
+    # Check if it's a slider
     cmpw $1, 4(%rdi)
     je check_for_miss_slider
 
-    cmpw $1, 6(%rdi) # check if it was hit already
+    # Checks a regular note
+
+    # Check if it was hit already
+    cmpw $1, 6(%rdi) 
     je note_fulfilled
-    cmpw $1, 2(%rdi) # check if it was missed and accounted for already
+    # Check if it was missed and accounted for already
+    cmpw $1, 2(%rdi)
     je note_fulfilled
-    cmpq $-100, %rsi # check if it was missed
+    # Check if it was missed
+    cmpq $-100, %rsi
     jge note_fulfilled
-    movw $1, 2(%rdi) # set the flag for being accounted for
-    movq $-3, %rsi # subtract this much hp
+
+    # Trigger a miss
+    # Set the flag for being accounted for
+    movw $1, 2(%rdi) 
+    # Lower the health
+    movq $-3, %rsi
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     call handle_health
+    # Reset combo
     movq -8(%rbp), %rdi
-    movq $0, 16(%rdi) # reset streak
+    movq $0, 16(%rdi) 
     jmp note_fulfilled
 
+    # Checks a slider
     check_for_miss_slider:
-    cmpw $3, 6(%rdi) # check if it was hit fully already
+    # Check if it was hit fully already
+    cmpw $3, 6(%rdi)
     je note_fulfilled
-    cmpw $2, 6(%rdi) # check if the start has been hit already
+    # Check if the start has been hit already
+    cmpw $2, 6(%rdi) 
     je slider_start_fulfilled
 
-    cmpw $1, 2(%rdi) # check if it was missed and accounted for already
+    # Check slider start
+
+    # Check if it was missed and accounted for already
+    cmpw $1, 2(%rdi) 
     je note_fulfilled
-    cmpq $-100, %rsi # check if it was missed
+    # Check if it was missed
+    cmpq $-100, %rsi 
     jge note_fulfilled
-    movw $1, 2(%rdi) # set the flag for start being accounted for
-    movq $-3, %rsi # subtract this much hp
+
+    # Trigger a miss
+
+    # Set the flag for only slider start being accounted for
+    movw $1, 2(%rdi) 
+    # Lower the health
+    movq $-3, %rsi 
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     call handle_health
+    # Reset combo
     movq -8(%rbp), %rdi
-    movq $0, 16(%rdi) # reset streak
+    movq $0, 16(%rdi)
     jmp note_fulfilled
 
+    # Check slider end
     slider_start_fulfilled:
     cmpw $2, 2(%rdi) # check if it was missed and accounted for already
     je note_fulfilled
     cmpq $-100, %rdx # check if it was missed
     jge note_fulfilled
-    movw $2, 2(%rdi) # set the flag for start being accounted for
-    movq $-3, %rsi # subtract this much hp
+
+    # Trigger a miss
+    # Set the flag for whole slider being accounted for
+    movw $2, 2(%rdi)
+    # Lower the health
+    movq $-3, %rsi
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     call handle_health
+    # Reset combo
     movq -8(%rbp), %rdi
-    movq $0, 16(%rdi) # reset streak
+    movq $0, 16(%rdi)
     jmp note_fulfilled
 
     note_fulfilled:
