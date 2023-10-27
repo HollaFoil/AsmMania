@@ -103,6 +103,8 @@ main:
     movq %rsp, %rbp
 
     subq $640, %rsp
+
+    # Create game window, with size 900x640
     movq $640, -56(%rbp)
     movq $900, -64(%rbp)
     leaq -48(%rbp), %rdi
@@ -110,6 +112,7 @@ main:
     movq -64(%rbp), %rdx
     call init_window
 
+    # Initialize stack values/variables to required values
     movq $0, -280(%rbp)
     movq $0, -288(%rbp)
     movq $0, -296(%rbp)
@@ -127,28 +130,33 @@ main:
     movq $-1, -632(%rbp)
     movq $-1, -640(%rbp)
 
-    leaq -320(%rbp), %rdi
-    leaq -328(%rbp), %rsi
-    call create_pcm_handle
-
-    leaq -432(%rbp), %rdi
-    call load_config
-    movq %rax, -440(%rbp)
-
     movq $0, -576(%rbp)
     movq $100, -584(%rbp) # set hp to 100
     movq $0, -592(%rbp)
     movq $0, -600(%rbp)
     movq $0, -608(%rbp)
 
+    # Create the ALSA pcm handle used for audio playback
+    leaq -320(%rbp), %rdi
+    leaq -328(%rbp), %rsi
+    call create_pcm_handle
+
+    # Parse config.txt file
+    leaq -432(%rbp), %rdi
+    call load_config
+    movq %rax, -440(%rbp)
+
+    # Get time object, which corresponds to time at the start of the map
     leaq -456(%rbp), %rdi
     movq $0, %rsi
     call gettimeofday
 
+    # Get time object, which corresponds to time since last frame
     leaq -24(%rbp), %rdi
     movq $0, %rsi
     call gettimeofday
     loop:
+        # Save previously saved button presses, which are used to differentiate between held and just pressed keys
         movq -280(%rbp), %rax
         movq %rax, -544(%rbp)
         movq -288(%rbp), %rax
@@ -158,17 +166,20 @@ main:
         movq -304(%rbp), %rax
         movq %rax, -568(%rbp)
 
-        start_events:
         # Handle events
+        start_events:  
+            # Check if there are any pending events
             movq -32(%rbp), %rdi
             call XPending@PLT
             cmp $0, %rax
             je no_event
 
+            # Get the next event
             movq -32(%rbp), %rdi
             leaq -272(%rbp), %rsi
             call XNextEvent@PLT
 
+            # Check if it is keypress event, if so, handle it
             leaq -272(%rbp), %rdi
             cmpl $2, (%rdi)
             jne not_keypress_event
@@ -178,6 +189,7 @@ main:
 
             not_keypress_event:
 
+            # Check if it is keyrelease event, if so, handle it
             leaq -272(%rbp), %rdi
             cmpl $3, (%rdi)
             jne not_keyrelease_event
@@ -186,17 +198,11 @@ main:
             call handle_keyrelease_event
             not_keyrelease_event:
 
-            leaq -272(%rbp), %rdi
-            leaq -304(%rbp), %rsi
-
-            cmpl $12, (%rdi)
-            jne not_expose_event
-            not_expose_event:
-            
+            # Jump back in case there are multiple events to handle
             jmp start_events
         no_event:
 
-        # sound fx on keypress
+        # Check if any key was just pressed, and if so, play the hitsound sound effect
         movq $0, %rdi
         check_keypress:
             cmpq $1, -304(%rbp, %rdi, 8)
@@ -221,19 +227,20 @@ main:
         call play_sound_fx
         dont_play_sfx:
 
-        #Handle song
+        # Check how many frames are buffered in the song, don't send too many for input delay issues
         movq -320(%rbp), %rdi
         call snd_pcm_avail@PLT
         cmpq $32, %rax
         jl should_not_advance_song
 
-        # check if song has ended
+        # Check if song has ended
         movq -408(%rbp), %rdi
         addq $1024, %rdi
         movq -416(%rbp), %rsi
         cmpq %rdi, %rsi
         jl song_end
 
+        # Write 1024 bytes of song (256 frames) into the pcm buffer
         movq -320(%rbp), %rdi
         movq -424(%rbp), %rsi
         movq -408(%rbp), %r9
@@ -245,13 +252,13 @@ main:
         je should_not_advance_song
         addq $1024, -408(%rbp)
 
-        # sometimes pcm throws error code -32, underrun
-
+        # Sometimes pcm throws error code -32, underrun
         cmpq $0, %rax
         je no_event
 
         should_not_advance_song:
 
+        # Get the time since the start of the map, used for timing reasons
         leaq -456(%rbp), %rdi
         call time_since 
         movq $0, %rdx 
@@ -260,6 +267,7 @@ main:
         movq %rax, %r8
         pushq %r8
 
+        # Handle object hits
         leaq -304(%rbp), %rdi
         leaq -568(%rbp), %rsi
         movq -440(%rbp), %rdx
@@ -271,23 +279,21 @@ main:
         popq %rax
         popq %r8
 
+        # Handle hold note releases
         leaq -304(%rbp), %rdi
         movq %r8, %rsi
         leaq -608(%rbp), %rdx
         leaq -640(%rbp), %rcx
         call handle_release
-
+        
+        # Get time since last frame. Frame time is limited to >5ms
         leaq -24(%rbp), %rdi
         call time_since
         cmp $5000, %rax
         jl loop
         
-        movq $format, %rdi
-        movq %rax, %rsi
-        movq $0, %rax
-        #call printf
-
         # Handle fade animations by adding/subtracting values each frame depending on if button pressed
+        # Render code is located in render.s, this just sets the fade amount
         cmpq $1, -280(%rbp)
         je lane1pressed
         jmp lane1notpressed
@@ -353,10 +359,12 @@ main:
             jmp endlanes
         endlanes:
 
+        # Get time since last frame
         leaq -24(%rbp), %rdi
         movq $0, %rsi
         call gettimeofday
 
+        # Clear entire window to color black
         movq -32(%rbp), %rdi
         movq -40(%rbp), %rsi
         movq $0, %rdx
@@ -368,6 +376,7 @@ main:
         call XClearArea@PLT
         addq $16, %rsp
 
+        # Draw the background play area - lanes, fade effect, hit line
         movq -280(%rbp), %rsi
         movq -288(%rbp), %rdx
         movq -296(%rbp), %rcx
@@ -376,6 +385,7 @@ main:
         leaq -488(%rbp), %r9
         call draw_play_area
 
+        # Draw various text items
         leaq -576(%rbp), %rsi
         leaq -48(%rbp), %rdi
         call draw_text
@@ -393,72 +403,86 @@ main:
         leaq -48(%rbp), %rdi
         call draw_metadata
 
+        # Get the time since the start of the map
         pushq %r14
         pushq %r15
         leaq -456(%rbp), %rdi
-        call time_since # get time since start of map
+        call time_since
 
+        # Convert the time to miliseconds
         movq $0, %rdx 
         movq $1000, %rcx
-        divq %rcx # convert microseconds to miliseconds
+        divq %rcx
         movq %rax, %r14
 
+        # Draw all the hitobjects that are currently in view
         movq -496(%rbp), %r15
         hit_obj_loop:
             movq -440(%rbp), %rdi
 
+            # Skip if object status is 1, meaning the object is hit
             movq $0, %rsi
-            movw 6(%rdi, %r15, 8), %si # skip if status = 1 (object hit)
+            movw 6(%rdi, %r15, 8), %si
             cmpq $1, %rsi
             je next_obj
 
-            movq $0, %rsi
-            movw 6(%rdi, %r15, 8), %si # skip if status = 1 (object hit)
-
+            # Check if slider start is still in the future, meaning we should not trim it on keypress, yet 
             cmpl %r14d, 8(%rdi, %r15, 8)
             jg dont_trim_slider
 
+            # Check if object status is 2 or 3, in which case it is a slider that has been hit and we should trim it
             cmpq $2, %rsi
             je trim_slider
             cmpq $3, %rsi
             je trim_slider
             jmp dont_trim_slider
 
+            # Trim slider to only extend down to the hit line, for visual reasons
             trim_slider:
             movl %r14d, 8(%rdi, %r15, 8)
             cmpl %r14d, 12(%rdi, %r15, 8)
             jl next_obj
             dont_trim_slider:
 
+            # Get the lane of the hit object
             movq $0, %rsi
-            movl (%rdi, %r15, 8), %esi # get lane of hit object
+            movl (%rdi, %r15, 8), %esi
 
+            # Get the height/hit time of the hit object
             movq $0, %rdx
-            movl 8(%rdi, %r15, 8), %edx # get time of hit object
-            subq %r14, %rdx # get the offset
+            movl 8(%rdi, %r15, 8), %extend
+            # Get the time offset since the start of the song
+            subq %r14, %rdx
 
+            # Check if the hit object is a slider or a regular object
             movq $0, %rcx
-            movw 4(%rdi, %r15, 8), %cx # get if slider
-            testw %cx, %cx # look if slider
-            jz regular_obj # jump if not slider
+            movw 4(%rdi, %r15, 8), %cx
+            testw %cx, %cx
+            jz regular_obj
             
-            movl 12(%rdi, %r15, 8), %ecx # get slider time
-            subq %r14, %rcx # get offset
-            cmpq $-2000, %rcx # check if slider end is below screen
+            # Since this is a slider, we also need to get the slider end time
+            movl 12(%rdi, %r15, 8), %ecx
+            # Get slider end time since start of song
+            subq %r14, %rcx
+            # Check if slider is below the screen
+            cmpq $-2000, %rcx
             jg keep_obj
             addq $2, -496(%rbp)
             jmp next_obj
 
             regular_obj:
-            cmpq $-2000, %rdx # check if obj is below screen
+            # Check if object is below the screen, in which case we never want to render this object again
+            cmpq $-2000, %rdx
             jg keep_obj
             addq $2, -496(%rbp)
             jmp next_obj
 
             keep_obj:
-            cmpq $2000, %rdx # check if object is above screen
+            # Check if object is above the screen, in which case we stop rendering objects
+            cmpq $2000, %rdx
             jg end_hit_obj_drawing
 
+            # Check whether we've missed any objects
             pushq %rcx
             pushq %rdx
             pushq %rsi
@@ -473,20 +497,22 @@ main:
             popq %rdx
             popq %rcx
             
-            leaq -48(%rbp), %rdi # get window or smth
-            #shlq $1, %rdx # doubled the speed
-            #shlq $1, %rcx # doubled the speed
+            # Draw the hit object
+            leaq -48(%rbp), %rdi
             call draw_hit_object
 
             next_obj:
-            addq $2, %r15 # increment the index by 2
-            movq -432(%rbp), %rdi # get number of objects
-            shlq $1, %rdi # multiply by 2
+            # Increment index by 2, as each object is 2*8 bytes
+            addq $2, %r15 
 
+            # Check if we're not at the end of the object list
+            movq -432(%rbp), %rdi 
+            shlq $1, %rdi 
             cmpq %r15, %rdi
             jne hit_obj_loop
         end_hit_obj_drawing:
 
+        # Draw the hp bar at the top of the screen
         movq -584(%rbp), %rsi
         leaq -48(%rbp), %rdi
         call draw_hp_bar
@@ -494,7 +520,7 @@ main:
         popq %r15
         popq %r14
 
-
+        # Jump back to the start of the game loop
         jmp loop
 
     

@@ -1,8 +1,8 @@
 .global time_since
 
-
-# %RAX - return value, difference between two time values, in microseconds
+# Gets the time difference between current time and given time object, in microseconds
 # %RDI - pointer to time object, gotten from call gettimeofday
+# %RAX - return value, difference between two time values, in microseconds
 time_since:
     pushq %rbp
     movq %rsp, %rbp

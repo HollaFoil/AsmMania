@@ -101,6 +101,7 @@ draw_play_area:
     movq 16(%rdi), %rax
     movq %rax, -72(%rbp)
 
+    # Lane x offsets
     #1x offset
     movq $TOP_LEFT_X, %r12
     addq $LANE_WIDTH, %r12
@@ -124,7 +125,7 @@ draw_play_area:
     #Lane 1
     movq	-72(%rbp), %rdi	
     movq	-88(%rbp), %rsi	
-	movq	$3352328, %rdx	# White
+	movq	$3352328, %rdx
 	call	XSetForeground@PLT
 
     movq -72(%rbp), %rdi
@@ -144,7 +145,7 @@ draw_play_area:
     #Lane 2
     movq	-72(%rbp), %rdi	
     movq	-88(%rbp), %rsi	
-	movq	$3282432, %rdx	# White
+	movq	$3282432, %rdx
 	call	XSetForeground@PLT
 
     movq -72(%rbp), %rdi
@@ -163,7 +164,7 @@ draw_play_area:
     #Lane 3
     movq	-72(%rbp), %rdi	
     movq	-88(%rbp), %rsi	
-	movq	$2754322, %rdx	# White
+	movq	$2754322, %rdx
 	call	XSetForeground@PLT
 
     movq -72(%rbp), %rdi
@@ -182,7 +183,7 @@ draw_play_area:
     #Lane 4
     movq	-72(%rbp), %rdi	
     movq	-88(%rbp), %rsi	
-	movq	$2690095, %rdx	# White
+	movq	$2690095, %rdx
 	call	XSetForeground@PLT
 
     movq -72(%rbp), %rdi
@@ -199,7 +200,7 @@ draw_play_area:
     addq $16, %rsp
 
 
-    #  GRADIENTS
+    #  Lane press gradients by drawing fading lines (no RGBA format supported, only RGB)
     movq $LANE_VISUAL_HEIGHT, %r10
     loop_lane1:
         cmp $GRADIENT_HEIGHT_UP_TO, %r10
@@ -207,6 +208,7 @@ draw_play_area:
 
         movq $0, %r8
 
+        # Get fade strength
         movq $LANE_VISUAL_HEIGHT, %rdi
         subq %r10, %rdi
         movq $1000, %rax
@@ -221,6 +223,7 @@ draw_play_area:
         divq %rdi
         movq %rax, %rdx
 
+        # Do linear interpolation between R G B values
         movq $RB1, %rdi
         movq $RF1, %rsi
         call lerp
@@ -241,9 +244,11 @@ draw_play_area:
 
         movq %r10, %r15
 
+
+        # Draw the line at given height and color
         movq	-72(%rbp), %rdi	
         movq	-88(%rbp), %rsi	
-        movq	%r8, %rdx	# White
+        movq	%r8, %rdx
         call	XSetForeground@PLT
         
         movq %r15, %r10
@@ -269,6 +274,7 @@ draw_play_area:
         jmp loop_lane1
     end_loop_lane1:
 
+    #  Lane press gradients by drawing fading lines (no RGBA format supported, only RGB)
     movq $LANE_VISUAL_HEIGHT, %r10
     loop_lane2:
         cmp $GRADIENT_HEIGHT_UP_TO, %r10
@@ -276,6 +282,7 @@ draw_play_area:
 
         movq $0, %r8
 
+        # Get fade strength
         movq $LANE_VISUAL_HEIGHT, %rdi
         subq %r10, %rdi
         movq $1000, %rax
@@ -290,6 +297,7 @@ draw_play_area:
         divq %rdi
         movq %rax, %rdx
 
+        # Do linear interpolation between R G B values
         movq $RB2, %rdi
         movq $RF2, %rsi
         call lerp
@@ -310,9 +318,10 @@ draw_play_area:
 
         movq %r10, %r15
 
+        # Draw the line at given height and color
         movq	-72(%rbp), %rdi	
         movq	-88(%rbp), %rsi	
-        movq	%r8, %rdx	# White
+        movq	%r8, %rdx
         call	XSetForeground@PLT
         
         movq %r15, %r10
@@ -337,6 +346,7 @@ draw_play_area:
         jmp loop_lane2
     end_loop_lane2:
 
+    #  Lane press gradients by drawing fading lines (no RGBA format supported, only RGB)
     movq $LANE_VISUAL_HEIGHT, %r10
     loop_lane3:
         cmp $GRADIENT_HEIGHT_UP_TO, %r10
@@ -344,6 +354,7 @@ draw_play_area:
 
         movq $0, %r8
 
+        # Get fade strength
         movq $LANE_VISUAL_HEIGHT, %rdi
         subq %r10, %rdi
         movq $1000, %rax
@@ -358,6 +369,7 @@ draw_play_area:
         divq %rdi
         movq %rax, %rdx
 
+        # Do linear interpolation between R G B values
         movq $RB3, %rdi
         movq $RF3, %rsi
         call lerp
@@ -378,9 +390,10 @@ draw_play_area:
 
         movq %r10, %r15
 
+        # Draw the line at given height and color
         movq	-72(%rbp), %rdi	
         movq	-88(%rbp), %rsi	
-        movq	%r8, %rdx	# White
+        movq	%r8, %rdx
         call	XSetForeground@PLT
         
         movq %r15, %r10
@@ -405,6 +418,7 @@ draw_play_area:
         jmp loop_lane3
     end_loop_lane3:
 
+    #  Lane press gradients by drawing fading lines (no RGBA format supported, only RGB)
     movq $LANE_VISUAL_HEIGHT, %r10
     loop_lane4:
         cmp $GRADIENT_HEIGHT_UP_TO, %r10
@@ -412,6 +426,7 @@ draw_play_area:
 
         movq $0, %r8
 
+        # Get fade strength
         movq $LANE_VISUAL_HEIGHT, %rdi
         subq %r10, %rdi
         movq $1000, %rax
@@ -426,6 +441,7 @@ draw_play_area:
         divq %rdi
         movq %rax, %rdx
 
+        # Do linear interpolation between R G B values
         movq $RB4, %rdi
         movq $RF4, %rsi
         call lerp
@@ -446,9 +462,10 @@ draw_play_area:
 
         movq %r10, %r15
 
+        # Draw the line at given height and color
         movq	-72(%rbp), %rdi	
         movq	-88(%rbp), %rsi	
-        movq	%r8, %rdx	# White
+        movq	%r8, %rdx
         call	XSetForeground@PLT
         
         movq %r15, %r10
@@ -473,105 +490,13 @@ draw_play_area:
         jmp loop_lane4
     end_loop_lane4:
 
-
-    jmp dont_draw_button_4
-    cmpq $0, -40(%rbp)
-    je dont_draw_button_1
-
     movq	-72(%rbp), %rdi	
     movq	-88(%rbp), %rsi	
-	movq	$16765226, %rdx	# White
-	call	XSetForeground@PLT
-
-    movq -72(%rbp), %rdi
-    movq -80(%rbp), %rsi
-    movq -88(%rbp), %rdx
-    movq $TOP_LEFT_X, %rcx
-    addq $BORDER_WIDTH, %rcx
-    movq $TOP_LEFT_Y, %r8
-    addq $LANE_HEIGHT, %r8
-    subq $BUTTON_HEIGHT, %r8
-    movq $LANE_WIDTH, %r9
-    movq $BUTTON_HEIGHT, %r10
-    pushq %r10
-
-    #call XFillRectangle@PLT
-
-    dont_draw_button_1:
-
-    cmpq $0, -48(%rbp)
-    je dont_draw_button_2
-
-    movq	-72(%rbp), %rdi	
-    movq	-88(%rbp), %rsi	
-	movq	$16777215, %rdx	# White
-	call	XSetForeground@PLT
-
-    movq -72(%rbp), %rdi
-    movq -80(%rbp), %rsi
-    movq -88(%rbp), %rdx
-    movq %r12, %rcx
-    movq $TOP_LEFT_Y, %r8
-    addq $LANE_HEIGHT, %r8
-    subq $BUTTON_HEIGHT, %r8
-    movq $LANE_WIDTH, %r9
-    movq $BUTTON_HEIGHT, %r10
-    pushq %r10
-
-    #call XFillRectangle@PLT
-    dont_draw_button_2:
-
-    cmpq $0, -56(%rbp)
-    je dont_draw_button_3
-
-    movq	-72(%rbp), %rdi	
-    movq	-88(%rbp), %rsi	
-	movq	$16777215, %rdx	# White
-	call	XSetForeground@PLT
-
-    movq -72(%rbp), %rdi
-    movq -80(%rbp), %rsi
-    movq -88(%rbp), %rdx
-    movq %r13, %rcx
-    movq $TOP_LEFT_Y, %r8
-    addq $LANE_HEIGHT, %r8
-    subq $BUTTON_HEIGHT, %r8
-    movq $LANE_WIDTH, %r9
-    movq $BUTTON_HEIGHT, %r10
-    pushq %r10
-
-    #call XFillRectangle@PLT
-    dont_draw_button_3:
-
-    cmpq $0, -64(%rbp)
-    je dont_draw_button_4
-
-    movq	-72(%rbp), %rdi	
-    movq	-88(%rbp), %rsi	
-	movq	$16745097, %rdx	# White
-	call	XSetForeground@PLT
-
-    movq -72(%rbp), %rdi
-    movq -80(%rbp), %rsi
-    movq -88(%rbp), %rdx
-    movq %r14, %rcx
-    movq $TOP_LEFT_Y, %r8
-    addq $LANE_HEIGHT, %r8
-    subq $BUTTON_HEIGHT, %r8
-    movq $LANE_WIDTH, %r9
-    movq $BUTTON_HEIGHT, %r10
-    pushq %r10
-
-    #call XFillRectangle@PLT
-    dont_draw_button_4:
-
-    movq	-72(%rbp), %rdi	
-    movq	-88(%rbp), %rsi	
-	movq	$16777215, %rdx	# White
+	movq	$16777215, %rdx
 	call	XSetForeground@PLT
 
 
-    #Bottom wall
+    # Draw hit line
     movq -72(%rbp), %rdi
     movq -80(%rbp), %rsi
     movq -88(%rbp), %rdx
