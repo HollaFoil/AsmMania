@@ -549,6 +549,7 @@ main:
 
 
 /*
+Subroutine to handle event when a key is pressed
 rdi      = pointer to event
 rsi      = pointer to lane4pressed
 rsi + 8  = pointer to lane3pressed
@@ -559,6 +560,7 @@ handle_keypress_event:
     pushq %rbp
     movq %rsp, %rbp
 
+    # Switch case to check which key was pressed. Keycodes are constants defined near the start of the program
     movq 84(%rdi), %rdi
     cmpl $KEY1, %edi
     je pressed_key_1
@@ -574,6 +576,7 @@ handle_keypress_event:
     je pressed_alternate_key_4
     jmp key_press_end
 
+    # Simply set the value to 1 to describe whether lane is pressed
     pressed_key_1:
     pressed_alternate_key_1:
         movq $1, 24(%rsi)
@@ -588,17 +591,18 @@ handle_keypress_event:
     pressed_alternate_key_4:
         movq $1, (%rsi)
         jmp key_press_end
-
-
     key_press_end:
+    
     movq %rbp, %rsp
     popq %rbp
 ret
 
+# Exact same subroutine as above, however this handles the release of a key
 handle_keyrelease_event:
     pushq %rbp
     movq %rsp, %rbp
 
+    # Switch case to check which key was released. Keycodes are constants defined near the start of the program
     movq 84(%rdi), %rdi
     cmpl $KEY1, %edi
     je released_key_1
@@ -614,6 +618,7 @@ handle_keyrelease_event:
     je released_alternate_key_4
     jmp key_release_end
 
+    # Simply set the value to 0 to describe whether lane is released
     released_key_1:
     released_alternate_key_1:
         movq $0, 24(%rsi)
@@ -628,9 +633,8 @@ handle_keyrelease_event:
     released_alternate_key_4:
         movq $0, (%rsi)
         jmp key_release_end
-
-
     key_release_end:
+
     movq %rbp, %rsp
     popq %rbp
 ret
@@ -653,6 +657,7 @@ handle_hit:
     pushq %r14
     pushq %r15
 
+    # Store all subroutine arguments on stack
     subq $64, %rsp
     movq %rdi, -40(%rbp)
     movq %rsi, -48(%rbp)
@@ -663,6 +668,7 @@ handle_hit:
     movq 16(%rbp), %rax
     movq %rax, -88(%rbp)
 
+    # Loop through each lane and find first object which is within the required timing threshold
     movq -56(%rbp), %rdi
     movq $0, %r9
     find_closest_obj_loop:
@@ -670,11 +676,12 @@ handle_hit:
         movq $-20000, %r13
         movq $-1, %r8
         find_loop:
+            # Get the time offset of this hit object since start of song
             movq $0, %rdx
             movl 8(%rdi, %r15, 8), %edx
             subq -72(%rbp), %rdx
 
-            # Absolute value
+            # Absolute value of offset
             movq %rdx, %r12
             movq %r12, %rax
             sarq $63, %rax
@@ -682,27 +689,31 @@ handle_hit:
             xorq %r12, %rdx
             subq %rax, %rdx
 
+            # Check if object is within threshold
             cmpq $280, %r12
             jg end_find_loop
 
             cmpq $-100, %r12
             jl next_iter
 
-            # Check state
+            # Check if object has been hit, i.e. check if state = 1
             movq $0, %rsi
             movw 6(%rdi, %r15, 8), %si
             cmpq $0, %rsi
             jne next_iter
 
+            # Check if this object is in the correct lane
             movq $0, %rsi
             movl (%rdi, %r15, 8), %esi
             cmpq %rsi, %r9
             jne next_iter
 
+            # All conditions passed, therefore we save values and "hit" this object
             movq %r15, %r8
             movq %rdx, %r13
             jmp end_find_loop
 
+            # Try next object
             next_iter:
             addq $2, %r15
             jmp find_loop
@@ -712,9 +723,12 @@ handle_hit:
         
         pushq %rdi
         pushq %r9
+
+        # Check if we found and object to hit
         cmpq $-1, %r8
         je dont_set_status
 
+        # "Hit" this object and handle game logic
         leaq (%rdi, %r8, 8), %rdi
         movq -40(%rbp), %rsi
         movq -48(%rbp), %rdx
@@ -723,17 +737,17 @@ handle_hit:
         movq -88(%rbp), %r9
         call set_obj_status_to_hit
 
-        
         dont_set_status:
 
         popq %r9
         popq %rdi
 
+        # Only 4 lanes, therefore we break when lane counter is too high
         cmpq $4, %r9
         je end_find_closest_obj_loop
         jmp find_closest_obj_loop
     end_find_closest_obj_loop:
-
+    
     addq $64, %rsp
     popq %r15
     popq %r14
@@ -744,6 +758,7 @@ handle_hit:
 ret
 
 /*
+Handle the release of hold notes
 RDI - currently pressed lanes (struct of 4 qw)
 RSI - time since start of song (ms)
 RDX - player performance struct
@@ -763,27 +778,30 @@ handle_release:
     movq %rdx, -56(%rbp)
     movq %rcx, -64(%rbp)
 
+    # R9 is a memory offset for each lane. Each lane holding info is 8 bytes, so offsets are 0, 8, 16, 24
     movq $24, %r9
     handle_unholding_notes_loop:
+        # Check if we are still holding the key
         movq -40(%rbp), %rdi
         addq %r9, %rdi
         cmpq $1, (%rdi)
         je next_iter_release
 
-
+        # Check if we were pressing and holding a note
         movq -64(%rbp), %rdi
         addq %r9, %rdi
         cmpq $-1, (%rdi)
         je next_iter_release
+        # We no longer are holding, so set the holding note address to -1 (not holding any note)
         movq (%rdi), %r8
         movq $-1, (%rdi)
 
-
+        # Get the offset of the hold note's end since start of song
         movq $0, %rdx
         movl 12(%r8), %edx
         subq -48(%rbp), %rdx
 
-        # Absolute value
+        # Absolute value of the offset
         movq %rdx, %r12
         movq %r12, %rax
         sarq $63, %rax
@@ -794,6 +812,7 @@ handle_release:
         pushq %rdi
         pushq %r9
 
+        # We release this object and handle game logic
         movq %r8, %rdi
         movq %rdx, %rsi
         movq -56(%rbp), %rdx
@@ -802,6 +821,7 @@ handle_release:
         popq %r9
         popq %rdi
 
+        # Handle next iteration. Break if lane offset is below 0 (first such value is -8, so we break when it hits -8)
         next_iter_release:
         subq $8, %r9
         cmpq $-8, %r9
@@ -819,6 +839,7 @@ handle_release:
 ret
 
 /*
+Release a hold note
 %RDI - obj location
 %RSI - delay
 (%RDX) - player performance struct
@@ -827,10 +848,10 @@ set_obj_status_to_released:
     pushq %rbp
     movq %rsp, %rbp
 
+    # Set note status to 3
     movw $3, 6(%rdi)
 
-    # update text
-    # rsi = rsi
+    # Update text
     movq %rdx, %rdi
     call handle_note_press
 
@@ -853,6 +874,7 @@ set_obj_status_to_hit:
     pushq %r8
     pushq %r9
 
+    # Calculate memory offset for the given lane the object is in
     movq $0, %rax
     movl (%rdi), %eax
     movq $-8, %r9 
@@ -861,11 +883,13 @@ set_obj_status_to_hit:
     popq %rdx
     addq $24, %rax
 
+    # Add this offset to required struct addresses
     addq %rax, %rsi
     addq %rax, %rdx
     movq (%rsi), %r8
     movq (%rdx), %r9
 
+    # Check if we JUST pressed this key (not holding)
     cmpq $1, %r8
     jne end_set_obj
     cmpq $0, %r9
@@ -874,7 +898,7 @@ set_obj_status_to_hit:
     pushq %rdi
     pushq %rax
 
-    # update text
+    # Update text
     movq %rcx, %rsi
     movq -8(%rbp), %rdi
     call handle_note_press
@@ -882,10 +906,13 @@ set_obj_status_to_hit:
     popq %rax
     popq %rdi
 
+    # Check if this is a hold note
     movw 4(%rdi), %dx
     cmpw $1, %dx
     jne set_status_regular_obj
 
+    # This is a hold note, so we set status to 2, meaning holding.
+    # We also save the hold note index to the holding notes struct 
     movw $2, 6(%rdi)
     popq %r9
     addq %rax, %r9
@@ -893,6 +920,7 @@ set_obj_status_to_hit:
     jmp end_set_obj
 
     set_status_regular_obj:
+    # Set status to 1, meaning hit
     movw $1, 6(%rdi)
 
     end_set_obj:
