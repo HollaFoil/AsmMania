@@ -4,9 +4,11 @@ file_mode: .asciz "w"
 string: .asciz "Highscore:%d\nMax combo:%d\n"
 error_message: .asciz "Failed to open/create a highscore file"
 
+# Create a file or overwrite an existing one with new scores.
 # %rdi - file name
 # %rsi - max score
 # %rdx - max combo
+# return the file pointer
 save_highscore:
     # stack:
     # -8(%rbp) - max score
@@ -18,7 +20,7 @@ save_highscore:
     pushq %rdx
     subq $16, %rsp
 
-    # open or create a file
+    # Open or create a file
     # %rdi already contains file name
     movq $file_mode, %rsi
     call fopen
@@ -33,15 +35,17 @@ save_highscore:
     movq -24(%rbp), %rdi
     call fprintf
 
-    
     end:
+    # Close the file
     movq -24(%rbp), %rdi
     call fclose
 
+    movq -24(%rbp), %rax
     movq %rbp, %rsp
     popq %rbp
     ret
 
+# Print an error message in the terminal
 fopen_failed:
     movq $error_message, %rdi
     movq $0, %rax

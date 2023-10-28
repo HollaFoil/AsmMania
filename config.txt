@@ -1,5 +1,5 @@
 Map filepath:maps
-Variant:1
+Variant:3
 Song offset:242
 Hitsound filepath:hitSound.wav
 Hitsound volume 0-100:25
@@ -7,3 +7,5 @@ Hitsound volume 0-100:25
 Please put variables directly after : and end directly with a newline
 Don't mess with the first three lines in other ways
 Don't leave them empty, it will break most likely
+
+In map folder there should be a "audio.wav" song file, mapX.sus beatmap file where X is the variant number 0-9.

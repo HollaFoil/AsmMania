@@ -1,2 +1,2 @@
-Highscore:21
-Max combo:6
+Highscore:68909
+Max combo:105

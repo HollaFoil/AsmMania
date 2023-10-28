@@ -46,13 +46,13 @@ format: .asciz "%ld\n"
 
 .global draw_play_area
 .global draw_hit_object
-.global draw_text
+.global draw_status_text
 .global draw_hp_bar
 .global draw_current_combo
 .global draw_current_score
 .global draw_metadata
-
-
+.global draw_highscore
+.global draw_max_combo
 
 /*
 -8rbp %r12
@@ -797,7 +797,7 @@ Draws the status message
 %rdi - gc struct
 (%rsi) - text_state
 */
-draw_text:
+draw_status_text:
     pushq %rbp
     movq %rsp, %rbp
 
@@ -1055,6 +1055,48 @@ draw_current_combo:
     ret
 
 /*
+Draws the max combo
+(%rdi) - gc struct
+%rsi - combo
+*/
+draw_max_combo:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    pushq (%rdi) # gc -8(%rbp)
+    pushq 8(%rdi) # wi -16(%rbp)
+    pushq 16(%rdi) # di -24(%rbp)
+    subq $48, %rsp
+
+    # Convert the combo integer to a string
+    movq %rsi, %rdi
+    leaq -72(%rbp), %rsi
+    call int_to_string
+    movq %rax, -32(%rbp)
+
+    # Set the colour
+    movq $0xffffff, %rdx	# White
+    movq -8(%rbp), %rsi	
+    movq -24(%rbp), %rdi
+	call XSetForeground@PLT
+
+    # Draw the combo
+    movq -32(%rbp), %rax
+    pushq %rax
+    leaq -72(%rbp), %r9
+    movq $LANE_HEIGHT, %r8
+    subq $150, %r8
+    movq $20, %rcx
+    movq -8(%rbp), %rdx
+    movq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call XDrawImageString@PLT
+
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
+/*
 Draws the current string
 (%rdi) - gc struct
 %rsi - score
@@ -1095,6 +1137,49 @@ draw_current_score:
     movq %rbp, %rsp
     popq %rbp
     ret
+
+/*
+Draws the highscore string
+(%rdi) - gc struct
+%rsi - score
+*/
+draw_highscore:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    pushq (%rdi) # gc -8(%rbp)
+    pushq 8(%rdi) # wi -16(%rbp)
+    pushq 16(%rdi) # di -24(%rbp)
+    subq $16, %rsp
+
+    # Convert the score integer to a string
+    movq %rsi, %rdi
+    leaq -32(%rbp), %rsi
+    call int_to_string
+    movq %rax, -40(%rbp)
+
+    # Set the colour
+    movq $0xffffff, %rdx	# White
+    movq -8(%rbp), %rsi	
+    movq -24(%rbp), %rdi
+	call XSetForeground@PLT
+
+    # Draw the score
+    movq -40(%rbp), %rax
+    pushq %rax
+    leaq -32(%rbp), %r9
+    movq $LANE_HEIGHT, %r8
+    subq $170, %r8
+    movq $20, %rcx
+    movq -8(%rbp), %rdx
+    movq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call XDrawImageString@PLT
+
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
 
 /*
 Draw the metadata of the map

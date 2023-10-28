@@ -31,8 +31,8 @@ map_cleared_message: .asciz "You have cleared the map!\n"
 -328(%rbp) = frames (period)
 
 
-
-
+-344(%rbp) = all time highscore
+-352(%rbp) = all time max combo
 -360(%rbp) = highscore file name
 -368(%rbp) = metadata number of chars
 -376(%rbp) = metadata
@@ -381,7 +381,7 @@ main:
         # Draw various text items
         leaq -576(%rbp), %rsi
         leaq -48(%rbp), %rdi
-        call draw_text
+        call draw_status_text
 
         movq -592(%rbp), %rsi
         leaq -48(%rbp), %rdi
@@ -390,6 +390,14 @@ main:
         movq -608(%rbp), %rsi
         leaq -48(%rbp), %rdi
         call draw_current_score
+
+        movq -344(%rbp), %rsi
+        leaq -48(%rbp), %rdi
+        call draw_highscore
+
+        movq -352(%rbp), %rsi
+        leaq -48(%rbp), %rdi
+        call draw_max_combo
 
         movq -368(%rbp), %rdx
         movq -376(%rbp), %rsi
@@ -535,8 +543,15 @@ main:
     movq $0, %rax
     call printf
 
+    # Update the highscore and max combo
     movq -600(%rbp), %rdx
+    movq -352(%rbp), %rcx
+    cmpq %rcx, %rdx
+    cmovlq %rcx, %rdx
     movq -608(%rbp), %rsi
+    movq -344(%rbp), %rcx
+    cmpq %rcx, %rsi
+    cmovlq %rcx, %rsi
     movq -360(%rbp), %rdi
     call save_highscore
 
@@ -968,7 +983,7 @@ handle_note_press:
 
     jmp end_set_handle_note_press
     
-    # Increment combo, don't change health, set to display the "Ok" text
+    # Increase combo and score, don't change health, set to display the "Ok" text
     ok:
     # Increment the combo
     incq 16(%rdi)
@@ -987,12 +1002,13 @@ handle_note_press:
 
     jmp end_set_handle_note_press
 
-    # Increment combo, increment health, set to display the "Nice!" text
+    # Increase combo and score, increment health, set to display the "Nice!" text
     nice:
     incq 16(%rdi)
     # Update the max combo
-    movq 16(%rdi), %rsi
-    addq %rsi, (%rdi)
+    movq 16(%rdi), %rax
+    shlq %rax
+    addq %rax, (%rdi)
     movq 8(%rdi), %rdx
     cmpq %rdx, %rsi
     cmovg %rsi, %rdx
@@ -1010,12 +1026,14 @@ handle_note_press:
 
     jmp end_set_handle_note_press
 
-    # Increment combo, increment health by 2, set to display the "Perfect!" text
+    # Increase combo and score, increment health by 2, set to display the "Perfect!" text
     perfect:
     incq 16(%rdi)
     # Update the max combo
-    movq 16(%rdi), %rsi
-    addq %rsi, (%rdi)
+    movq 16(%rdi), %rax
+    movq $3, %rdx
+    mulq %rdx
+    addq %rax, (%rdi)
     movq 8(%rdi), %rdx
     cmpq %rdx, %rsi
     cmovg %rsi, %rdx

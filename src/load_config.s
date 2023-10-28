@@ -29,6 +29,8 @@ txt_string_end: .equ txt_string_len, txt_string_end - txt_string
 # 56(%rdi) metadata
 # 64(%rdi) metadata size
 # 72(%rdi) highscore file name
+# 80(%rdi) max combo
+# 88(%rdi) highscore
 
 load_config:
     # stack:
@@ -47,11 +49,12 @@ load_config:
     # -104(%rbp) read_bytes for hit sound file
     # -112(%rbp) pointer to allocated memory for hit sound wav
     # -120(%rbp) pointer to return struct
+    # -128(%rbp) highscore file
 
     pushq %rbp
     movq %rsp, %rbp
 
-    subq $120, %rsp
+    subq $136, %rsp
 
     movq %rdi, -120(%rbp)
 
@@ -84,6 +87,41 @@ load_config:
     addq $8, %rax 
     movq %rax, -72(%rbp)
 
+    # Read the highscore file and place it into memory
+    movq $1, %rcx
+    movq $0, %rdx
+    leaq -128(%rbp), %rsi
+    movq -8(%rbp), %rdi
+    call read_file
+    testq %rax, %rax
+    jnz highscore_file_exists
+
+    # Set the highscore and max combo to zero
+    movq -120(%rbp), %rdi
+    movq $0, 80(%rdi)
+    movq $0, 80(%rdi)
+    jmp skip_reading_highscore_file
+    highscore_file_exists:
+    # Put the pointer to highscore file contents in stack
+    movq %rax, -128(%rbp)
+
+    # Get highscore and return it
+    leaq -128(%rbp), %rdi
+    call get_next_variable 
+    movq %rax, %rdi
+    call convert_string_to_int
+    movq -120(%rbp), %rdi
+    movq %rax, 88(%rdi)
+    
+    # Get max combo and return it
+    leaq -128(%rbp), %rdi
+    call get_next_variable 
+    movq %rax, %rdi
+    call convert_string_to_int
+    movq -120(%rbp), %rdi
+    movq %rax, 80(%rdi)
+
+    skip_reading_highscore_file:
     # Read the metadata file and place it into memory and save the pointer in stack
     movq $1, %rcx
     movq $0, %rdx
