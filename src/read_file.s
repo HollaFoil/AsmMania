@@ -15,7 +15,6 @@ file_mode: .asciz "r"
 # output:
 # %rax - address to the allocated memory where the read contents of the file are
 # (%rsi) - the size of the file in bytes
-
 read_file:
 	# stack:
 	# -8(%rbp) BYTES_READ pointer

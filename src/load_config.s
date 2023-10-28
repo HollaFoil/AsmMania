@@ -10,6 +10,10 @@ map_string_end: .equ map_string_len, map_string_end - map_string - 1
 sus_string: .asciz ".sus"
 sus_string_end: .equ sus_string_len, sus_string_end - sus_string
 malloc_error_msg: .asciz "Error while decoding the config file"
+highscore_string: .asciz "/highscore"
+highscore_string_end: .equ highscore_string_len, highscore_string_end - highscore_string - 1
+txt_string: .asciz ".txt"
+txt_string_end: .equ txt_string_len, txt_string_end - txt_string
 
 
 # this function reads the config and loads the specified files to allocated
@@ -22,10 +26,13 @@ malloc_error_msg: .asciz "Error while decoding the config file"
 # 32(%rdi) preview_time
 # 40(%rdi) pointer to hit sound file in memory
 # 48(%rdi) size of hitsound wav file in bytes
+# 56(%rdi) metadata
+# 64(%rdi) metadata size
+# 72(%rdi) highscore file name
 
 load_config:
     # stack:
-    # -8(%rbp) pointer to return struct
+    # -8(%rbp) highscore file name
     # -16(%rbp) read_bytes of metadata
     # -24(%rbp) metadata.txt
     # -32(%rbp) volume
@@ -38,14 +45,15 @@ load_config:
     # -88(%rbp) pointer to allocated memory for music wav
     # -96(%rbp) preview_time
     # -104(%rbp) read_bytes for hit sound file
-    # -112(%rbp) pointer to allocated memory for hit sound wav 
+    # -112(%rbp) pointer to allocated memory for hit sound wav
+    # -120(%rbp) pointer to return struct
 
     pushq %rbp
     movq %rsp, %rbp
 
     subq $120, %rsp
 
-    movq %rdi, -8(%rbp)
+    movq %rdi, -120(%rbp)
 
     # Read the config file
     movq $1, %rcx
@@ -116,7 +124,7 @@ load_config:
     call set_hit_sound_volume
 
     # finally return everything
-    movq -8(%rbp), %rdi # get the address of return struct
+    movq -120(%rbp), %rdi # get the address of return struct
 
     # divide read_bytes of map file by 16 to get the number of hit objects
     movq -64(%rbp), %rax
@@ -147,6 +155,9 @@ load_config:
     movq -16(%rbp), %rax
     movq %rax, 64(%rdi)
 
+    movq -8(%rbp), %rax
+    movq %rax, 72(%rdi)
+
     movq -72(%rbp), %rax
 
     movq %rbp, %rsp
@@ -171,13 +182,14 @@ read_failed:
 # 8(%rsi) the offset
 # 16(%rsi) pointer to hitsound file name
 # 24(%rsi) volume
-# 32(%rsi) metadata.txt
+# 32(%rsi) metadata file name
+# 48(%rsi) highscore file name
 decode_config:
     # stack:
     # -8(%rbp) stores arg %rsi
     # -16(%rbp) stores arg %rdi
     # -24(%rbp) stores pointer to map folder name
-    # -32(%rbp) folder path length
+    # -32(%rbp) folder name length
     # -40(%rbp) map variant
     pushq %rbp
     movq %rsp, %rbp
@@ -197,14 +209,14 @@ decode_config:
     loop_scan:
         addq $32, %rax # increment the pointer by 32 bytes
         vpxor %ymm0, %ymm0, %ymm0 # make a mask of 0s
-        vpcmpeqb (%rax), %ymm0, %ymm0 # this instruct sets a corresponding byte in %ymm0 to 1s if there is a cell of 0s
+        vpcmpeqb (%rax), %ymm0, %ymm0 # this instruct sets a corresponding byte in %ymm0 to 1s if there is a null byte
         vpmovmskb %ymm0, %r8 # move the MSB bit of every byte to a general register
         
-        testl %r8d, %r8d # check if we found a 0 cell, by checking if there are any bits set to 1
+        testl %r8d, %r8d # check if we found a null byte, by checking if there are any bits set to 1
         jz loop_scan # continue the loop if not
 
     bsf %r8, %r8 # find the least significant set bit
-    addq %r8, %rax # add its index to cell pointer
+    addq %r8, %rax # add its index the pointer
 
     # Get the string length
     subq -24(%rbp), %rax
@@ -215,7 +227,7 @@ decode_config:
     call get_next_variable
     movq %rax, -40(%rbp)
     
-    # allocate memory for song path
+    # Allocate memory for song name
     movq -32(%rbp), %rdi
     addq $song_string_len, %rdi
 	call malloc
@@ -224,6 +236,7 @@ decode_config:
     movq -8(%rbp), %rsi
 	movq %rax, (%rsi)
 
+    # Concatenate the full song name
     movq %rax, %rdx
     pushq $song_string
     movq -24(%rbp), %rdi
@@ -232,7 +245,7 @@ decode_config:
     movq $2, %rdi
     call concatenate_string
 
-    # allocate memory for metadata path
+    # Allocate memory for metadata name
     movq -32(%rbp), %rdi
     addq $metadata_string_len, %rdi
 	call malloc
@@ -241,6 +254,7 @@ decode_config:
     movq -8(%rbp), %rsi
 	movq %rax, 32(%rsi)
 
+    # Concatenate the full metadata name
     movq %rax, %rdx
     pushq $metadata_string
     movq -24(%rbp), %rdi
@@ -257,7 +271,7 @@ decode_config:
     movq -8(%rbp), %rsi
     movq %rax, 8(%rsi)
 
-    # Get hit sound file path
+    # Get hit sound file name
     leaq -16(%rbp), %rdi
     call get_next_variable 
     movq -8(%rbp), %rsi
@@ -271,7 +285,29 @@ decode_config:
     movq -8(%rbp), %rsi
     movq %rax, 24(%rsi)
 
-    # allocate memory for map path
+    # Allocate memory for highscore name
+    movq -32(%rbp), %rdi
+    addq $highscore_string_len, %rdi
+    addq $1, %rdi
+    addq $txt_string_len, %rdi
+	call malloc
+	test %rax, %rax
+	jz malloc_failed
+	movq -8(%rbp), %rsi
+    movq %rax, 48(%rsi)
+
+    # Concatenate the full highscore name
+    movq %rax, %rdx
+    pushq $txt_string
+    pushq -40(%rbp)
+    pushq $highscore_string
+    movq -24(%rbp), %rdi
+    pushq %rdi
+    movq %rsp, %rsi
+    movq $4, %rdi
+    call concatenate_string
+
+    # Allocate memory for map name
     movq -32(%rbp), %rdi
     addq $map_string_len, %rdi
     addq $1, %rdi
@@ -281,16 +317,17 @@ decode_config:
 	jz malloc_failed
 	movq %rax, -48(%rbp)
 
+    # Concatenate the full map name
     movq %rax, %rdx
     pushq $sus_string
     pushq -40(%rbp)
     pushq $map_string
-    movq -24(%rbp), %rdi
-    pushq %rdi
+    pushq -24(%rbp)
     movq %rsp, %rsi
     movq $4, %rdi
     call concatenate_string
 
+    # Return the map name
     movq -48(%rbp), %rax
 
     movq %rbp, %rsp
@@ -311,9 +348,12 @@ concatenate_string:
     pushq %rbp
     movq %rsp, %rbp
 
+    # Initiate a string counter
     movq $0, %rax
     loop_concatenate_string:
+        # Get the next string
         movq (%rsi, %rax, 8), %rcx 
+        # Copy the string on top of the new string
         loop_copy_char:
             movb (%rcx), %r8b
             movb %r8b, (%rdx)
@@ -325,6 +365,7 @@ concatenate_string:
         cmpq %rdi, %rax
         jne loop_concatenate_string
 
+    # Put a null byte at the end
     movb $0, (%rdx)
     movq %rbp, %rsp
     popq %rbp

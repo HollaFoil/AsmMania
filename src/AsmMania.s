@@ -33,7 +33,7 @@ map_cleared_message: .asciz "You have cleared the map!\n"
 
 
 
-
+-360(%rbp) = highscore file name
 -368(%rbp) = metadata number of chars
 -376(%rbp) = metadata
 -384(%rbp) = size of hit sound in bytes
@@ -534,6 +534,11 @@ main:
     movq $final_combo_message, %rdi
     movq $0, %rax
     call printf
+
+    movq -600(%rbp), %rdx
+    movq -608(%rbp), %rsi
+    movq -360(%rbp), %rdi
+    call save_highscore
 
     end:
     # Play the remaining samples in the buffer, close the PCM handle and exit

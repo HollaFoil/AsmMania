@@ -1,0 +1,2 @@
+Highscore:21
+Max combo:6
