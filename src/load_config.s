@@ -1,6 +1,16 @@
 .global load_config
 
 config: .asciz "config.txt"
+song_string: .asciz "/audio.wav"
+song_string_end: .equ song_string_len, song_string_end - song_string
+metadata_string: .asciz "/metadata.txt"
+metadata_string_end: .equ metadata_string_len, metadata_string_end - metadata_string
+map_string: .asciz "/map"
+map_string_end: .equ map_string_len, map_string_end - map_string - 1
+sus_string: .asciz ".sus"
+sus_string_end: .equ sus_string_len, sus_string_end - sus_string
+malloc_error_msg: .asciz "Error while decoding the config file"
+
 
 # this function reads the config and loads the specified files to allocated
 # memory and returns a struct of 4 quadwords:
@@ -166,25 +176,78 @@ decode_config:
     # stack:
     # -8(%rbp) stores arg %rsi
     # -16(%rbp) stores arg %rdi
-    # -24(%rbp) stores pointer to map file name
+    # -24(%rbp) stores pointer to map folder name
+    # -32(%rbp) folder path length
+    # -40(%rbp) map variant
     pushq %rbp
     movq %rsp, %rbp
 
     movq %rsi, -8(%rbp)
     movq %rdi, -16(%rbp)
     
-    subq $32, %rsp
+    subq $48, %rsp
 
-    # Get the pointer to map file name and save it in stack
+    # Get the pointer to map folder name and save it in stack
     leaq -16(%rbp), %rdi
     call get_next_variable
-    movq %rax, -24(%rbp) 
+    movq %rax, -24(%rbp)
 
-    # Get the pointer to song file name and return it
+    # Move the pointer to a null byte
+    subq $32, %rax # set up the pointer
+    loop_scan:
+        addq $32, %rax # increment the pointer by 32 bytes
+        vpxor %ymm0, %ymm0, %ymm0 # make a mask of 0s
+        vpcmpeqb (%rax), %ymm0, %ymm0 # this instruct sets a corresponding byte in %ymm0 to 1s if there is a cell of 0s
+        vpmovmskb %ymm0, %r8 # move the MSB bit of every byte to a general register
+        
+        testl %r8d, %r8d # check if we found a 0 cell, by checking if there are any bits set to 1
+        jz loop_scan # continue the loop if not
+
+    bsf %r8, %r8 # find the least significant set bit
+    addq %r8, %rax # add its index to cell pointer
+
+    # Get the string length
+    subq -24(%rbp), %rax
+    movq %rax, -32(%rbp)
+
+    # Get the map variant
     leaq -16(%rbp), %rdi
     call get_next_variable
+    movq %rax, -40(%rbp)
+    
+    # allocate memory for song path
+    movq -32(%rbp), %rdi
+    addq $song_string_len, %rdi
+	call malloc
+	test %rax, %rax
+	jz malloc_failed
     movq -8(%rbp), %rsi
-    movq %rax, (%rsi) 
+	movq %rax, (%rsi)
+
+    movq %rax, %rdx
+    pushq $song_string
+    movq -24(%rbp), %rdi
+    pushq %rdi
+    movq %rsp, %rsi 
+    movq $2, %rdi
+    call concatenate_string
+
+    # allocate memory for metadata path
+    movq -32(%rbp), %rdi
+    addq $metadata_string_len, %rdi
+	call malloc
+	test %rax, %rax
+	jz malloc_failed
+    movq -8(%rbp), %rsi
+	movq %rax, 32(%rsi)
+
+    movq %rax, %rdx
+    pushq $metadata_string
+    movq -24(%rbp), %rdi
+    pushq %rdi
+    movq %rsp, %rsi
+    movq $2, %rdi
+    call concatenate_string
     
     # Get offset, convert it to an integer and return it
     leaq -16(%rbp), %rdi
@@ -194,11 +257,11 @@ decode_config:
     movq -8(%rbp), %rsi
     movq %rax, 8(%rsi)
 
-    # Get the pointer to hit sound file name and return it
+    # Get hit sound file path
     leaq -16(%rbp), %rdi
-    call get_next_variable
+    call get_next_variable 
     movq -8(%rbp), %rsi
-    movq %rax, 16(%rsi) 
+    movq %rax, 16(%rsi)
 
     # Get volume, convert it to an integer and return it
     leaq -16(%rbp), %rdi
@@ -208,18 +271,65 @@ decode_config:
     movq -8(%rbp), %rsi
     movq %rax, 24(%rsi)
 
-    # Get the pointer to metadata file name and return it
-    leaq -16(%rbp), %rdi
-    call get_next_variable
-    movq -8(%rbp), %rsi
-    movq %rax, 32(%rsi) 
+    # allocate memory for map path
+    movq -32(%rbp), %rdi
+    addq $map_string_len, %rdi
+    addq $1, %rdi
+    addq $sus_string_len, %rdi
+	call malloc
+	test %rax, %rax
+	jz malloc_failed
+	movq %rax, -48(%rbp)
 
-    # Return the map file pointer in %rax
-    movq -24(%rbp), %rax 
-    
+    movq %rax, %rdx
+    pushq $sus_string
+    pushq -40(%rbp)
+    pushq $map_string
+    movq -24(%rbp), %rdi
+    pushq %rdi
+    movq %rsp, %rsi
+    movq $4, %rdi
+    call concatenate_string
+
+    movq -48(%rbp), %rax
+
     movq %rbp, %rsp
     popq %rbp
     ret
+
+    malloc_failed:
+    movq $malloc_error_msg, %rdi
+    movq $0, %rax
+    call printf
+    movq $-1, %rdi
+    call exit
+
+# %rdi - how many strings
+# (%rsi) - struct of strings
+# (%rdx) - allocated memory address for the new string
+concatenate_string:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    movq $0, %rax
+    loop_concatenate_string:
+        movq (%rsi, %rax, 8), %rcx 
+        loop_copy_char:
+            movb (%rcx), %r8b
+            movb %r8b, (%rdx)
+            incq %rdx
+            incq %rcx
+            cmpb $0, (%rcx)
+            jne loop_copy_char
+        incq %rax
+        cmpq %rdi, %rax
+        jne loop_concatenate_string
+
+    movb $0, (%rdx)
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
 
 # Argument: address of pointer to config, which gets updated
 # Returns a pointer to the next variable in %rax

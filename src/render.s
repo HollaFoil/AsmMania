@@ -779,18 +779,18 @@ lerp:
 ret
 
 # Status messages and their lengths
-perfect: .asciz "Perfect!"
+perfect: .ascii "Perfect!"
 perfect_end:
-.equ perfect_length, perfect_end - perfect - 1
-nice: .asciz "Nice!"
+.equ perfect_length, perfect_end - perfect
+nice: .ascii "Nice!"
 nice_end:
-.equ nice_length, nice_end - nice - 1
-ok: .asciz "Ok"
+.equ nice_length, nice_end - nice
+ok: .ascii "Ok"
 ok_end:
-.equ ok_length, ok_end - ok - 1
-missed: .asciz "Missed"
+.equ ok_length, ok_end - ok
+missed: .ascii "Missed"
 missed_end:
-.equ missed_length, missed_end - missed - 1
+.equ missed_length, missed_end - missed
 
 /*
 Draws the status message
