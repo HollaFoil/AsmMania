@@ -1239,7 +1239,7 @@ check_for_miss:
     # Set the flag for being accounted for
     movw $1, 2(%rdi) 
     # Lower the health
-    movq $-3, %rsi
+    movq $-5, %rsi
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     call handle_health
@@ -1273,7 +1273,7 @@ check_for_miss:
     # Set the flag for only slider start being accounted for
     movw $1, 2(%rdi) 
     # Lower the health
-    movq $-3, %rsi 
+    movq $-5, %rsi 
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     call handle_health
@@ -1295,7 +1295,7 @@ check_for_miss:
     # Set the flag for whole slider being accounted for
     movw $2, 2(%rdi)
     # Lower the health
-    movq $-3, %rsi
+    movq $-5, %rsi
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     call handle_health
