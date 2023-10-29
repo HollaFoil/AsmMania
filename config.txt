@@ -1,6 +1,4 @@
-Map filepath:maps/Camellia - WHAT THE CAT!?
-Variant:1
-Song offset:242
+Song offset:240
 Hitsound filepath:hitSound.wav
 Hitsound volume 0-100:25
 

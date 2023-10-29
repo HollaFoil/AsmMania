@@ -8,7 +8,10 @@ score_message: .asciz "Score: %d\n"
 lost_message: .asciz "You lost!\n"
 map_cleared_message: .asciz "You have cleared the map!\n"
 
-/* RESERVED STACK SPACE = 640 BYTES
+map_folder: .asciz "maps/Camellia - WHAT THE CAT!?/"
+map_variant: .asciz "map1"
+
+/* RESERVED STACK SPACE = 656 BYTES
 -16(%rbp) = time since last frame in microseconds
 -24(%rbp) = time since last frame in seconds
 
@@ -30,16 +33,16 @@ map_cleared_message: .asciz "You have cleared the map!\n"
 -320(%rbp) = pcm handle
 -328(%rbp) = frames (period)
 
+-336(%rpb) = pointer to hit sound
+-344(%rbp) = size of hit sound in bytes
+-352(%rbp) = song offset
 
--344(%rbp) = all time highscore
--352(%rbp) = all time max combo
--360(%rbp) = highscore file name
--368(%rbp) = metadata number of chars
--376(%rbp) = metadata
--384(%rbp) = size of hit sound in bytes
--392(%rpb) = pointer to hit sound
--400(%rbp) = preview_time 
--408(%rbp) = song offset
+-368(%rbp) = best accurracy
+-376(%rbp) = all time highscore
+-384(%rbp) = all time max combo
+-392(%rbp) = highscore file name
+-400(%rbp) = metadata number of chars
+-408(%rbp) = metadata
 -416(%rbp) = size of song in bytes
 -424(%rbp) = pointer to song
 -432(%rbp) = no. hit objects
@@ -58,24 +61,25 @@ map_cleared_message: .asciz "You have cleared the map!\n"
 
 -520       = num of events
 
-
-
--544       = lane1pressed old
--552       = lane2pressed old
--560       = lane3pressed old
--568       = lane4pressed old
+-528       = lane1pressed old
+-536       = lane2pressed old
+-544       = lane3pressed old
+-552       = lane4pressed old
 
 player performance struct
+-560(%rbp) = current accurracy
+-568(%rbp) = ideal current accurracy
 -576(%rbp) = text_state
 -584(%rbp) = hp
 -592(%rbp) = current combo
 -600(%rbp) = max combo
 -608(%rbp) = score
 
--616 = holding note lane 1 (-1 if not holding)
--624 = holding note lane 2 (-1 if not holding)
--632 = holding note lane 3 (-1 if not holding)
--640 = holding note lane 4 (-1 if not holding)
+
+-624 = holding note lane 1 (-1 if not holding)
+-632 = holding note lane 2 (-1 if not holding)
+-640 = holding note lane 3 (-1 if not holding)
+-648 = holding note lane 4 (-1 if not holding)
 */
 
 .text
@@ -95,7 +99,7 @@ main:
     pushq %rbp
     movq %rsp, %rbp
 
-    subq $640, %rsp
+    subq $656, %rsp
 
     # Create game window, with size 900x640
     movq $640, -56(%rbp)
@@ -125,25 +129,34 @@ main:
     movq $1000, -480(%rbp)
     movq $1000, -488(%rbp)
 
-    movq $-1, -616(%rbp)
     movq $-1, -624(%rbp)
     movq $-1, -632(%rbp)
     movq $-1, -640(%rbp)
+    movq $-1, -648(%rbp)
 
     movq $0, -576(%rbp)
     movq $100, -584(%rbp) # set hp to 100
     movq $0, -592(%rbp)
     movq $0, -600(%rbp)
     movq $0, -608(%rbp)
+    movq $1, -568(%rbp)
+    movq $1, -560(%rbp)
 
     # Create the ALSA pcm handle used for audio playback
     leaq -320(%rbp), %rdi
     leaq -328(%rbp), %rsi
     call create_pcm_handle
 
-    # Parse config.txt file
-    leaq -432(%rbp), %rdi
+    # Load config.txt file
+    leaq -344(%rbp), %rdi
     call load_config
+    movq %rax, -352(%rbp)
+
+    # Load map
+    movq $map_variant, %rdx
+    movq $map_folder, %rsi
+    leaq -432(%rbp), %rdi
+    call load_map
     movq %rax, -440(%rbp)
 
     # Get time object, which corresponds to time at the start of the map
@@ -158,13 +171,13 @@ main:
     loop:
         # Save previously saved button presses, which are used to differentiate between held and just pressed keys
         movq -280(%rbp), %rax
-        movq %rax, -544(%rbp)
+        movq %rax, -528(%rbp)
         movq -288(%rbp), %rax
-        movq %rax, -552(%rbp)
+        movq %rax, -536(%rbp)
         movq -296(%rbp), %rax
-        movq %rax, -560(%rbp)
+        movq %rax, -544(%rbp)
         movq -304(%rbp), %rax
-        movq %rax, -568(%rbp)
+        movq %rax, -552(%rbp)
 
         # Handle events
         start_events:  
@@ -207,7 +220,7 @@ main:
         check_keypress:
             cmpq $1, -304(%rbp, %rdi, 8)
             jne next_iter_check_keypress
-            cmpq $0, -568(%rbp, %rdi, 8)
+            cmpq $0, -552(%rbp, %rdi, 8)
             jne next_iter_check_keypress
             jmp play_sfx
 
@@ -220,10 +233,10 @@ main:
         jmp dont_play_sfx
 
         play_sfx:
-        movq -408(%rbp), %rcx
+        movq -352(%rbp), %rcx
         movq -424(%rbp), %rdx
-        movq -384(%rbp), %rsi
-        movq -392(%rbp), %rdi
+        movq -344(%rbp), %rsi
+        movq -336(%rbp), %rdi
         call play_sound_fx
         dont_play_sfx:
 
@@ -234,7 +247,7 @@ main:
         jl should_not_advance_song
 
         # Check if song has ended
-        movq -408(%rbp), %rdi
+        movq -352(%rbp), %rdi
         addq $1024, %rdi
         movq -416(%rbp), %rsi
         cmpq %rdi, %rsi
@@ -243,14 +256,14 @@ main:
         # Write 1024 bytes of song (256 frames) into the pcm buffer
         movq -320(%rbp), %rdi
         movq -424(%rbp), %rsi
-        movq -408(%rbp), %r9
+        movq -352(%rbp), %r9
         addq %r9, %rsi
         movq $256, %rdx
         call snd_pcm_writei@PLT
         cmpq $-11, %rax # Error code -11, EAGAIN, driver not ready to accept new data
 
         je should_not_advance_song
-        addq $1024, -408(%rbp)
+        addq $1024, -352(%rbp)
 
         # Sometimes pcm throws error code -32 - underrun
         cmpq $0, %rax
@@ -268,12 +281,13 @@ main:
         pushq %r8
 
         # Handle object hits
+        movq -432(%rbp), %r10
         leaq -304(%rbp), %rdi
-        leaq -568(%rbp), %rsi
+        leaq -552(%rbp), %rsi
         movq -440(%rbp), %rdx
         movq -496(%rbp), %rcx
         leaq -608(%rbp), %r9
-        leaq -640(%rbp), %rax
+        leaq -648(%rbp), %rax
         pushq %rax
         call handle_hit
         popq %rax
@@ -283,7 +297,7 @@ main:
         leaq -304(%rbp), %rdi
         movq %r8, %rsi
         leaq -608(%rbp), %rdx
-        leaq -640(%rbp), %rcx
+        leaq -648(%rbp), %rcx
         call handle_release
         
         # Get time since last frame. Frame time is limited to >5ms
@@ -398,16 +412,29 @@ main:
         leaq -48(%rbp), %rdi
         call draw_current_score
 
-        movq -344(%rbp), %rsi
+        movq -376(%rbp), %rsi
         leaq -48(%rbp), %rdi
         call draw_highscore
 
-        movq -352(%rbp), %rsi
+        movq -384(%rbp), %rsi
         leaq -48(%rbp), %rdi
         call draw_max_combo
 
-        movq -368(%rbp), %rdx
-        movq -376(%rbp), %rsi
+        movq -560(%rbp), %rax
+        movq $100, %rdi
+        mulq %rdi
+        movq -568(%rbp), %rdi
+        divq %rdi
+        movq %rax, %rsi
+        leaq -48(%rbp), %rdi
+        call draw_current_accuracy
+
+        movq -368(%rbp), %rsi
+        leaq -48(%rbp), %rdi
+        call draw_max_accuracy
+
+        movq -400(%rbp), %rdx
+        movq -408(%rbp), %rsi
         leaq -48(%rbp), %rdi
         call draw_metadata
 
@@ -551,15 +578,23 @@ main:
     call printf
 
     # Update the highscore and max combo
+    movq -560(%rbp), %rax
+    movq $100, %rdi
+    mulq %rdi
+    movq -568(%rbp), %rdi
+    divq %rdi
+    movq -368(%rbp), %rcx
+    cmpq %rcx, %rax
+    cmovgq %rax, %rcx
     movq -600(%rbp), %rdx
-    movq -352(%rbp), %rcx
-    cmpq %rcx, %rdx
-    cmovlq %rcx, %rdx
+    movq -384(%rbp), %r8
+    cmpq %r8, %rdx
+    cmovlq %r8, %rdx
     movq -608(%rbp), %rsi
-    movq -344(%rbp), %rcx
-    cmpq %rcx, %rsi
-    cmovlq %rcx, %rsi
-    movq -360(%rbp), %rdi
+    movq -376(%rbp), %r8
+    cmpq %r8, %rsi
+    cmovlq %r8, %rsi
+    movq -392(%rbp), %rdi
     call save_highscore
 
     end:
@@ -673,6 +708,7 @@ RDX - hit object array address
 RCX - hit objects that have passed
 R8  - time since start of song (ms)
 R9  - player performance struct
+R10 - number of total hit objects
 
 STACK1 - lanes holding struct
 */
@@ -694,6 +730,9 @@ handle_hit:
     movq %r9, -80(%rbp)
     movq 16(%rbp), %rax
     movq %rax, -88(%rbp)
+
+    # Double the total hit obj
+    shlq %r10
 
     # Loop through each lane and find first object which is within the required timing threshold
     movq -56(%rbp), %rdi
@@ -743,6 +782,8 @@ handle_hit:
             # Try next object
             next_iter:
             addq $2, %r15
+            cmpq %r10, %r15
+            je end_find_loop
             jmp find_loop
 
         end_find_loop:
@@ -977,6 +1018,8 @@ handle_note_press:
 
     # Missed: reset combo, lower health, set to display the "Missed" text
     movq $0, 16(%rdi)
+    # Increase ideal acc
+    addq $3, 40(%rdi)
     # Set the flag for miss and update the text status
     movq $1, %rsi
     movq -8(%rbp), %rdi
@@ -990,10 +1033,13 @@ handle_note_press:
 
     jmp end_set_handle_note_press
     
-    # Increase combo and score, take away 1 health, set to display the "Ok" text
+    # Increase combo and score, lower health, set to display the "Ok" text
     ok:
     # Increment the combo
     incq 16(%rdi)
+    # Increase current and ideal acc
+    addq $3, 40(%rdi)
+    addq $1, 48(%rdi)
     # Update the max combo
     movq 16(%rdi), %rsi
     addq %rsi, (%rdi)
@@ -1006,7 +1052,7 @@ handle_note_press:
     movq -8(%rbp), %rdi
     leaq 32(%rdi), %rdi
     call set_text_status
-
+    # Lower health
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     movq $-1, %rsi
@@ -1017,6 +1063,9 @@ handle_note_press:
     # Increase combo and score, increment health, set to display the "Nice!" text
     nice:
     incq 16(%rdi)
+    # Increase ideal acc
+    addq $3, 40(%rdi)
+    addq $2, 48(%rdi)
     # Update the max combo
     movq 16(%rdi), %rax
     shlq %rax
@@ -1041,6 +1090,9 @@ handle_note_press:
     # Increase combo and score, increment health by 2, set to display the "Perfect!" text
     perfect:
     incq 16(%rdi)
+    # Increase current and ideal acc
+    addq $3, 40(%rdi)
+    addq $3, 48(%rdi)
     # Update the max combo
     movq 16(%rdi), %rax
     movq $3, %rdx
@@ -1192,12 +1244,14 @@ check_for_miss:
     # Set the flag for being accounted for
     movw $1, 2(%rdi) 
     # Lower the health
-    movq $-3, %rsi
+    movq $-5, %rsi
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     call handle_health
-    # Reset combo
+    # Increase ideal acc
     movq -8(%rbp), %rdi
+    addq $3, 40(%rdi)
+    # Reset combo
     movq $0, 16(%rdi) 
     jmp note_fulfilled
 
@@ -1224,12 +1278,14 @@ check_for_miss:
     # Set the flag for only slider start being accounted for
     movw $1, 2(%rdi) 
     # Lower the health
-    movq $-3, %rsi 
+    movq $-5, %rsi 
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     call handle_health
-    # Reset combo
+    # Increase ideal acc
     movq -8(%rbp), %rdi
+    addq $3, 40(%rdi)
+    # Reset combo
     movq $0, 16(%rdi)
     jmp note_fulfilled
 
@@ -1244,12 +1300,14 @@ check_for_miss:
     # Set the flag for whole slider being accounted for
     movw $2, 2(%rdi)
     # Lower the health
-    movq $-3, %rsi
+    movq $-5, %rsi
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     call handle_health
-    # Reset combo
+    # Increase ideal acc
     movq -8(%rbp), %rdi
+    addq $3, 40(%rdi)
+    # Reset combo
     movq $0, 16(%rdi)
     jmp note_fulfilled
 
