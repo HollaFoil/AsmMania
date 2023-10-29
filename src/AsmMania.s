@@ -11,7 +11,7 @@ map_cleared_message: .asciz "You have cleared the map!\n"
 map_folder: .asciz "maps/Camellia - WHAT THE CAT!?/"
 map_variant: .asciz "map1"
 
-/* RESERVED STACK SPACE = 640 BYTES
+/* RESERVED STACK SPACE = 656 BYTES
 -16(%rbp) = time since last frame in microseconds
 -24(%rbp) = time since last frame in seconds
 
@@ -60,8 +60,6 @@ map_variant: .asciz "map1"
 
 
 -520       = num of events
-
-
 
 -528       = lane1pressed old
 -536       = lane2pressed old
