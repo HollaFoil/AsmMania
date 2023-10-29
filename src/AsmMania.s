@@ -8,6 +8,9 @@ score_message: .asciz "Score: %d\n"
 lost_message: .asciz "You lost!\n"
 map_cleared_message: .asciz "You have cleared the map!\n"
 
+map_folder: .asciz "maps/Camellia - WHAT THE CAT!?/"
+map_variant: .asciz "map1"
+
 /* RESERVED STACK SPACE = 640 BYTES
 -16(%rbp) = time since last frame in microseconds
 -24(%rbp) = time since last frame in seconds
@@ -30,16 +33,16 @@ map_cleared_message: .asciz "You have cleared the map!\n"
 -320(%rbp) = pcm handle
 -328(%rbp) = frames (period)
 
--336(%rbp) = best accurracy
--344(%rbp) = all time highscore
--352(%rbp) = all time max combo
--360(%rbp) = highscore file name
--368(%rbp) = metadata number of chars
--376(%rbp) = metadata
--384(%rbp) = size of hit sound in bytes
--392(%rpb) = pointer to hit sound
--400(%rbp) = preview_time 
--408(%rbp) = song offset
+-336(%rpb) = pointer to hit sound
+-344(%rbp) = size of hit sound in bytes
+-352(%rbp) = song offset
+
+-368(%rbp) = best accurracy
+-376(%rbp) = all time highscore
+-384(%rbp) = all time max combo
+-392(%rbp) = highscore file name
+-400(%rbp) = metadata number of chars
+-408(%rbp) = metadata
 -416(%rbp) = size of song in bytes
 -424(%rbp) = pointer to song
 -432(%rbp) = no. hit objects
@@ -139,9 +142,16 @@ main:
     leaq -328(%rbp), %rsi
     call create_pcm_handle
 
-    # Parse config.txt file
-    leaq -432(%rbp), %rdi
+    # Load config.txt file
+    leaq -344(%rbp), %rdi
     call load_config
+    movq %rax, -352(%rbp)
+
+    # Load map
+    movq $map_variant, %rdx
+    movq $map_folder, %rsi
+    leaq -432(%rbp), %rdi
+    call load_map
     movq %rax, -440(%rbp)
 
     # Get time object, which corresponds to time at the start of the map
@@ -218,10 +228,10 @@ main:
         jmp dont_play_sfx
 
         play_sfx:
-        movq -408(%rbp), %rcx
+        movq -352(%rbp), %rcx
         movq -424(%rbp), %rdx
-        movq -384(%rbp), %rsi
-        movq -392(%rbp), %rdi
+        movq -344(%rbp), %rsi
+        movq -336(%rbp), %rdi
         call play_sound_fx
         dont_play_sfx:
 
@@ -232,7 +242,7 @@ main:
         jl should_not_advance_song
 
         # Check if song has ended
-        movq -408(%rbp), %rdi
+        movq -352(%rbp), %rdi
         addq $1024, %rdi
         movq -416(%rbp), %rsi
         cmpq %rdi, %rsi
@@ -241,14 +251,14 @@ main:
         # Write 1024 bytes of song (256 frames) into the pcm buffer
         movq -320(%rbp), %rdi
         movq -424(%rbp), %rsi
-        movq -408(%rbp), %r9
+        movq -352(%rbp), %r9
         addq %r9, %rsi
         movq $256, %rdx
         call snd_pcm_writei@PLT
         cmpq $-11, %rax # Error code -11, EAGAIN, driver not ready to accept new data
 
         je should_not_advance_song
-        addq $1024, -408(%rbp)
+        addq $1024, -352(%rbp)
 
         # Sometimes pcm throws error code -32 - underrun
         cmpq $0, %rax
@@ -266,6 +276,7 @@ main:
         pushq %r8
 
         # Handle object hits
+        movq -432(%rbp), %r10
         leaq -304(%rbp), %rdi
         leaq -552(%rbp), %rsi
         movq -440(%rbp), %rdx
@@ -396,11 +407,11 @@ main:
         leaq -48(%rbp), %rdi
         call draw_current_score
 
-        movq -344(%rbp), %rsi
+        movq -376(%rbp), %rsi
         leaq -48(%rbp), %rdi
         call draw_highscore
 
-        movq -352(%rbp), %rsi
+        movq -384(%rbp), %rsi
         leaq -48(%rbp), %rdi
         call draw_max_combo
 
@@ -413,12 +424,12 @@ main:
         leaq -48(%rbp), %rdi
         call draw_current_accuracy
 
-        movq -336(%rbp), %rsi
+        movq -368(%rbp), %rsi
         leaq -48(%rbp), %rdi
         call draw_max_accuracy
 
-        movq -368(%rbp), %rdx
-        movq -376(%rbp), %rsi
+        movq -400(%rbp), %rdx
+        movq -408(%rbp), %rsi
         leaq -48(%rbp), %rdi
         call draw_metadata
 
@@ -567,18 +578,18 @@ main:
     mulq %rdi
     movq -568(%rbp), %rdi
     divq %rdi
-    movq -336(%rbp), %rcx
+    movq -368(%rbp), %rcx
     cmpq %rcx, %rax
     cmovgq %rax, %rcx
     movq -600(%rbp), %rdx
-    movq -352(%rbp), %r8
+    movq -384(%rbp), %r8
     cmpq %r8, %rdx
     cmovlq %r8, %rdx
     movq -608(%rbp), %rsi
-    movq -344(%rbp), %r8
+    movq -376(%rbp), %r8
     cmpq %r8, %rsi
     cmovlq %r8, %rsi
-    movq -360(%rbp), %rdi
+    movq -392(%rbp), %rdi
     call save_highscore
 
     end:
@@ -692,6 +703,7 @@ RDX - hit object array address
 RCX - hit objects that have passed
 R8  - time since start of song (ms)
 R9  - player performance struct
+R10 - number of total hit objects
 
 STACK1 - lanes holding struct
 */
@@ -713,6 +725,9 @@ handle_hit:
     movq %r9, -80(%rbp)
     movq 16(%rbp), %rax
     movq %rax, -88(%rbp)
+
+    # Double the total hit obj
+    shlq %r10
 
     # Loop through each lane and find first object which is within the required timing threshold
     movq -56(%rbp), %rdi
@@ -762,6 +777,8 @@ handle_hit:
             # Try next object
             next_iter:
             addq $2, %r15
+            cmpq %r10, %r15
+            je end_find_loop
             jmp find_loop
 
         end_find_loop:
