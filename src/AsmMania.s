@@ -97,7 +97,6 @@ player performance struct
 .equ FADE_IN_SPEED, 200
 .equ MAX_FADE, 900
 
-
 main:
     pushq %rbp
     movq %rsp, %rbp
@@ -547,9 +546,9 @@ main:
 
             # Check if we're not at the end of the object list
             movq -432(%rbp), %rdi 
-            shlq $1, %rdi 
+            shlq %rdi 
             cmpq %r15, %rdi
-            jne hit_obj_loop
+            jg hit_obj_loop
         end_hit_obj_drawing:
 
         # Draw the hp bar at the top of the screen
@@ -738,6 +737,7 @@ handle_hit:
 
     # Double the total hit obj
     shlq %r10
+    movq %r10, -96(%rbp)
 
     # Loop through each lane and find first object which is within the required timing threshold
     movq -56(%rbp), %rdi
@@ -787,8 +787,9 @@ handle_hit:
             # Try next object
             next_iter:
             addq $2, %r15
+            movq -96(%rbp), %r10
             cmpq %r10, %r15
-            je end_find_loop
+            jge end_find_loop
             jmp find_loop
 
         end_find_loop:
@@ -1155,7 +1156,7 @@ handle_health:
 
     # Copy hp, modify the copy and check if it's 0 or less
     movq (%rdi), %rdx
-    addq %rsi, %rdx
+    #addq %rsi, %rdx
     cmpq $0, %rdx
     jle dead
 

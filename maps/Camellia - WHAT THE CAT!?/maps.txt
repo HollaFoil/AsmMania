@@ -1,3 +1,4 @@
+Easy:map0
 Normal:map1
 Hard:map2
 Extreme:map3
