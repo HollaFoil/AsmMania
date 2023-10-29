@@ -1000,6 +1000,11 @@ handle_note_press:
     leaq 32(%rdi), %rdi
     call set_text_status
 
+    movq -8(%rbp), %rdi
+    leaq 24(%rdi), %rdi
+    movq $-1, %rsi
+    call handle_health
+
     jmp end_set_handle_note_press
 
     # Increase combo and score, increment health, set to display the "Nice!" text
