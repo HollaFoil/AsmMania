@@ -3,6 +3,7 @@
 format: .asciz "%ld\n"
 format2: .asciz "%ld %ld\n"
 format3: .asciz "%ld %ld %ld\n"
+
 final_combo_message: .asciz "Highest combo: %d\n"
 score_message: .asciz "Score: %d\n"
 lost_message: .asciz "You lost!\n"
@@ -80,6 +81,8 @@ player performance struct
 -632 = holding note lane 2 (-1 if not holding)
 -640 = holding note lane 3 (-1 if not holding)
 -648 = holding note lane 4 (-1 if not holding)
+-656 = map directory
+-664 = map variant
 */
 
 .text
@@ -99,7 +102,7 @@ main:
     pushq %rbp
     movq %rsp, %rbp
 
-    subq $656, %rsp
+    subq $704, %rsp
 
     # Create game window, with size 900x640
     movq $640, -56(%rbp)
@@ -109,11 +112,13 @@ main:
     movq -64(%rbp), %rdx
     call init_window
 
-
+    # Select map menu
     leaq -48(%rbp), %rdi
     leaq -272(%rbp), %rsi
     movq -56(%rbp), %rdx
     movq -64(%rbp), %rcx
+    leaq -656(%rbp), %r8
+    leaq -664(%rbp), %r9
     call start_select_map
 
     # Initialize stack values/variables to required values
@@ -153,8 +158,8 @@ main:
     movq %rax, -352(%rbp)
 
     # Load map
-    movq $map_variant, %rdx
-    movq $map_folder, %rsi
+    movq -664(%rbp), %rdx
+    movq -656(%rbp), %rsi
     leaq -432(%rbp), %rdi
     call load_map
     movq %rax, -440(%rbp)

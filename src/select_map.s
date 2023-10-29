@@ -377,7 +377,7 @@ start_select_map:
     movq (%rdi, %r15, 8), %rdi
     movq %rdi, %r15
 
-    movq %rdi, -136(%rbp)
+    movq -136(%rbp), %rdi
     call load_map_directory_path
     movq -200(%rbp), %r8
     movq -208(%rbp), %r9
