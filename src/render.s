@@ -53,6 +53,7 @@ format: .asciz "%ld\n"
 .global draw_metadata
 .global draw_highscore
 .global draw_max_combo
+.global draw_choices
 
 /*
 -8rbp %r12
@@ -1178,7 +1179,107 @@ draw_highscore:
 
     movq %rbp, %rsp
     popq %rbp
-    ret
+ret
+
+/*
+Draws the highscore string
+(%rdi) - gc struct
+%rsi - choices
+%rdx - num of choices
+%rcx - current choice
+*/
+draw_choices:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    pushq (%rdi) # gc -8(%rbp)
+    pushq 8(%rdi) # wi -16(%rbp)
+    pushq 16(%rdi) # di -24(%rbp)
+    subq $8, %rsp
+
+    movq $0, %r8
+    loop_choice:
+        pushq %r8
+        pushq %rdx
+        pushq %rsi
+        pushq %rcx
+        
+        cmpq %r8, %rcx
+        je not_selected
+        jmp selected
+        selected:
+        movq $0xffffff, %rdx	# White
+        movq -8(%rbp), %rsi	
+        movq -24(%rbp), %rdi
+        call XSetForeground@PLT
+        jmp end_color_selection
+        not_selected:
+        movq $0x00ff00, %rdx	# White
+        movq -8(%rbp), %rsi	
+        movq -24(%rbp), %rdi
+        call XSetForeground@PLT
+        end_color_selection:
+
+        popq %rcx
+        popq %rsi
+        popq %rdx
+        popq %r8
+
+        pushq %r8
+        pushq %rdx
+        pushq %rsi
+        pushq %rcx
+
+        movq (%rsi, %r8, 8), %rdi
+        call strlen
+
+        popq %rcx
+        popq %rsi
+        popq %rdx
+        popq %r8
+
+        pushq %r8
+        pushq %rdx
+        pushq %rsi
+        pushq %rcx
+
+        movq (%rsi, %r8, 8), %r9
+        pushq %rax
+        pushq %rax
+
+        movq %r8, %rax
+        movq $16, %rdi
+        pushq %rdx
+        mulq %rdi
+        popq %rdx
+
+        movq %rax, %r8
+        addq $300, %r8
+        movq $200, %rcx
+        movq -8(%rbp), %rdx
+        movq -16(%rbp), %rsi
+        movq -24(%rbp), %rdi
+        call XDrawImageString@PLT
+        popq %rax
+        popq %rax
+
+        popq %rcx
+        popq %rsi
+        popq %rdx
+        popq %r8
+
+        incq %r8
+        cmpq %rdx, %r8
+        je end_loop_choice
+        jmp loop_choice
+    end_loop_choice:
+    # Set the colour
+
+    # Draw the score
+
+    movq %rbp, %rsp
+    popq %rbp
+ret
 
 
 /*

@@ -1,0 +1,5 @@
+Normal:map1
+Hard:map2
+Extreme:map3
+
+There must be a new line after the last map specification

@@ -105,6 +105,13 @@ main:
     movq -64(%rbp), %rdx
     call init_window
 
+
+    leaq -48(%rbp), %rdi
+    leaq -272(%rbp), %rsi
+    movq -56(%rbp), %rdx
+    movq -64(%rbp), %rcx
+    call start_select_map
+
     # Initialize stack values/variables to required values
     movq $0, -280(%rbp)
     movq $0, -288(%rbp)
@@ -983,7 +990,7 @@ handle_note_press:
 
     jmp end_set_handle_note_press
     
-    # Increase combo and score, don't change health, set to display the "Ok" text
+    # Increase combo and score, take away 1 health, set to display the "Ok" text
     ok:
     # Increment the combo
     incq 16(%rdi)
