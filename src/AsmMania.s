@@ -147,10 +147,6 @@ main:
     movq $1, -568(%rbp)
     movq $1, -560(%rbp)
 
-    # Create the ALSA pcm handle used for audio playback
-    leaq -320(%rbp), %rdi
-    leaq -328(%rbp), %rsi
-    call create_pcm_handle
 
     # Load config.txt file
     leaq -344(%rbp), %rdi
@@ -164,6 +160,10 @@ main:
     call load_map
     movq %rax, -440(%rbp)
 
+    # Create the ALSA pcm handle used for audio playback
+    leaq -320(%rbp), %rdi
+    leaq -328(%rbp), %rsi
+    call create_pcm_handle
     # Get time object, which corresponds to time at the start of the map
     leaq -456(%rbp), %rdi
     movq $0, %rsi
