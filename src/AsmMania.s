@@ -1028,7 +1028,7 @@ handle_note_press:
 
     jmp end_set_handle_note_press
     
-    # Increase combo and score, don't change health, set to display the "Ok" text
+    # Increase combo and score, lower health, set to display the "Ok" text
     ok:
     # Increment the combo
     incq 16(%rdi)
@@ -1047,7 +1047,7 @@ handle_note_press:
     movq -8(%rbp), %rdi
     leaq 32(%rdi), %rdi
     call set_text_status
-
+    # Lower health
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     movq $-1, %rsi
