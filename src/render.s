@@ -53,6 +53,8 @@ format: .asciz "%ld\n"
 .global draw_metadata
 .global draw_highscore
 .global draw_max_combo
+.global draw_max_accuracy
+.global draw_current_accuracy
 
 /*
 -8rbp %r12
@@ -1180,6 +1182,108 @@ draw_highscore:
     popq %rbp
     ret
 
+/*
+Draws the highest acc string
+(%rdi) - gc struct
+%rsi - highest acc
+*/
+draw_max_accuracy:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    pushq (%rdi) # gc -8(%rbp)
+    pushq 8(%rdi) # wi -16(%rbp)
+    pushq 16(%rdi) # di -24(%rbp)
+    subq $16, %rsp
+
+    # Convert the score integer to a string
+    movq %rsi, %rdi
+    leaq -32(%rbp), %rsi
+    call int_to_string
+    incq %rax
+    movq %rax, -40(%rbp)
+
+    # Append a percentage sign at the end of the string
+    leaq -32(%rbp), %rdi
+    call append_percent_sign
+
+    # Set the colour
+    movq $0xffffff, %rdx	# White
+    movq -8(%rbp), %rsi	
+    movq -24(%rbp), %rdi
+	call XSetForeground@PLT
+
+    # Draw the score
+    movq -40(%rbp), %rax
+    pushq %rax
+    leaq -32(%rbp), %r9
+    movq $LANE_HEIGHT, %r8
+    subq $130, %r8
+    movq $20, %rcx
+    movq -8(%rbp), %rdx
+    movq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call XDrawImageString@PLT
+
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
+/*
+Draws the current acc string
+(%rdi) - gc struct
+%rsi - current acc
+*/
+draw_current_accuracy:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    pushq (%rdi) # gc -8(%rbp)
+    pushq 8(%rdi) # wi -16(%rbp)
+    pushq 16(%rdi) # di -24(%rbp)
+    subq $16, %rsp
+
+    # Convert the score integer to a string
+    movq %rsi, %rdi
+    leaq -32(%rbp), %rsi
+    call int_to_string
+    incq %rax
+    movq %rax, -40(%rbp)
+
+    # Append a percentage sign at the end of the string
+    leaq -32(%rbp), %rdi
+    call append_percent_sign
+
+    # Set the colour
+    movq $0xffffff, %rdx	# White
+    movq -8(%rbp), %rsi	
+    movq -24(%rbp), %rdi
+	call XSetForeground@PLT
+
+    # Draw the score
+    movq -40(%rbp), %rax
+    pushq %rax
+    leaq -32(%rbp), %r9
+    movq $LANE_HEIGHT, %r8
+    subq $130, %r8
+    movq $500, %rcx
+    movq -8(%rbp), %rdx
+    movq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call XDrawImageString@PLT
+
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
+append_percent_sign:
+    incq %rdi
+    cmpb $0, (%rdi)
+    jne append_percent_sign
+    movb $37, (%rdi) # percentage char in decimal
+    incq %rdi
+    movb $0, (%rdi)
+    ret
 
 /*
 Draw the metadata of the map

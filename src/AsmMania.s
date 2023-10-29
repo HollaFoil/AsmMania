@@ -30,7 +30,7 @@ map_cleared_message: .asciz "You have cleared the map!\n"
 -320(%rbp) = pcm handle
 -328(%rbp) = frames (period)
 
-
+-336(%rbp) = best accurracy
 -344(%rbp) = all time highscore
 -352(%rbp) = all time max combo
 -360(%rbp) = highscore file name
@@ -60,22 +60,25 @@ map_cleared_message: .asciz "You have cleared the map!\n"
 
 
 
--544       = lane1pressed old
--552       = lane2pressed old
--560       = lane3pressed old
--568       = lane4pressed old
+-528       = lane1pressed old
+-536       = lane2pressed old
+-544       = lane3pressed old
+-552       = lane4pressed old
 
 player performance struct
+-560(%rbp) = current accurracy
+-568(%rbp) = ideal current accurracy
 -576(%rbp) = text_state
 -584(%rbp) = hp
 -592(%rbp) = current combo
 -600(%rbp) = max combo
 -608(%rbp) = score
 
--616 = holding note lane 1 (-1 if not holding)
--624 = holding note lane 2 (-1 if not holding)
--632 = holding note lane 3 (-1 if not holding)
--640 = holding note lane 4 (-1 if not holding)
+
+-624 = holding note lane 1 (-1 if not holding)
+-632 = holding note lane 2 (-1 if not holding)
+-640 = holding note lane 3 (-1 if not holding)
+-648 = holding note lane 4 (-1 if not holding)
 */
 
 .text
@@ -95,7 +98,7 @@ main:
     pushq %rbp
     movq %rsp, %rbp
 
-    subq $640, %rsp
+    subq $656, %rsp
 
     # Create game window, with size 900x640
     movq $640, -56(%rbp)
@@ -118,16 +121,18 @@ main:
     movq $1000, -480(%rbp)
     movq $1000, -488(%rbp)
 
-    movq $-1, -616(%rbp)
     movq $-1, -624(%rbp)
     movq $-1, -632(%rbp)
     movq $-1, -640(%rbp)
+    movq $-1, -648(%rbp)
 
     movq $0, -576(%rbp)
     movq $100, -584(%rbp) # set hp to 100
     movq $0, -592(%rbp)
     movq $0, -600(%rbp)
     movq $0, -608(%rbp)
+    movq $1, -568(%rbp)
+    movq $1, -560(%rbp)
 
     # Create the ALSA pcm handle used for audio playback
     leaq -320(%rbp), %rdi
@@ -151,13 +156,13 @@ main:
     loop:
         # Save previously saved button presses, which are used to differentiate between held and just pressed keys
         movq -280(%rbp), %rax
-        movq %rax, -544(%rbp)
+        movq %rax, -528(%rbp)
         movq -288(%rbp), %rax
-        movq %rax, -552(%rbp)
+        movq %rax, -536(%rbp)
         movq -296(%rbp), %rax
-        movq %rax, -560(%rbp)
+        movq %rax, -544(%rbp)
         movq -304(%rbp), %rax
-        movq %rax, -568(%rbp)
+        movq %rax, -552(%rbp)
 
         # Handle events
         start_events:  
@@ -200,7 +205,7 @@ main:
         check_keypress:
             cmpq $1, -304(%rbp, %rdi, 8)
             jne next_iter_check_keypress
-            cmpq $0, -568(%rbp, %rdi, 8)
+            cmpq $0, -552(%rbp, %rdi, 8)
             jne next_iter_check_keypress
             jmp play_sfx
 
@@ -262,11 +267,11 @@ main:
 
         # Handle object hits
         leaq -304(%rbp), %rdi
-        leaq -568(%rbp), %rsi
+        leaq -552(%rbp), %rsi
         movq -440(%rbp), %rdx
         movq -496(%rbp), %rcx
         leaq -608(%rbp), %r9
-        leaq -640(%rbp), %rax
+        leaq -648(%rbp), %rax
         pushq %rax
         call handle_hit
         popq %rax
@@ -276,7 +281,7 @@ main:
         leaq -304(%rbp), %rdi
         movq %r8, %rsi
         leaq -608(%rbp), %rdx
-        leaq -640(%rbp), %rcx
+        leaq -648(%rbp), %rcx
         call handle_release
         
         # Get time since last frame. Frame time is limited to >5ms
@@ -398,6 +403,19 @@ main:
         movq -352(%rbp), %rsi
         leaq -48(%rbp), %rdi
         call draw_max_combo
+
+        movq -560(%rbp), %rax
+        movq $100, %rdi
+        mulq %rdi
+        movq -568(%rbp), %rdi
+        divq %rdi
+        movq %rax, %rsi
+        leaq -48(%rbp), %rdi
+        call draw_current_accuracy
+
+        movq -336(%rbp), %rsi
+        leaq -48(%rbp), %rdi
+        call draw_max_accuracy
 
         movq -368(%rbp), %rdx
         movq -376(%rbp), %rsi
@@ -544,14 +562,22 @@ main:
     call printf
 
     # Update the highscore and max combo
+    movq -560(%rbp), %rax
+    movq $100, %rdi
+    mulq %rdi
+    movq -568(%rbp), %rdi
+    divq %rdi
+    movq -336(%rbp), %rcx
+    cmpq %rcx, %rax
+    cmovgq %rax, %rcx
     movq -600(%rbp), %rdx
-    movq -352(%rbp), %rcx
-    cmpq %rcx, %rdx
-    cmovlq %rcx, %rdx
+    movq -352(%rbp), %r8
+    cmpq %r8, %rdx
+    cmovlq %r8, %rdx
     movq -608(%rbp), %rsi
-    movq -344(%rbp), %rcx
-    cmpq %rcx, %rsi
-    cmovlq %rcx, %rsi
+    movq -344(%rbp), %r8
+    cmpq %r8, %rsi
+    cmovlq %r8, %rsi
     movq -360(%rbp), %rdi
     call save_highscore
 
@@ -970,6 +996,8 @@ handle_note_press:
 
     # Missed: reset combo, lower health, set to display the "Missed" text
     movq $0, 16(%rdi)
+    # Increase ideal acc
+    addq $3, 40(%rdi)
     # Set the flag for miss and update the text status
     movq $1, %rsi
     movq -8(%rbp), %rdi
@@ -987,6 +1015,9 @@ handle_note_press:
     ok:
     # Increment the combo
     incq 16(%rdi)
+    # Increase current and ideal acc
+    addq $3, 40(%rdi)
+    addq $1, 48(%rdi)
     # Update the max combo
     movq 16(%rdi), %rsi
     addq %rsi, (%rdi)
@@ -1005,6 +1036,9 @@ handle_note_press:
     # Increase combo and score, increment health, set to display the "Nice!" text
     nice:
     incq 16(%rdi)
+    # Increase ideal acc
+    addq $3, 40(%rdi)
+    addq $2, 48(%rdi)
     # Update the max combo
     movq 16(%rdi), %rax
     shlq %rax
@@ -1029,6 +1063,9 @@ handle_note_press:
     # Increase combo and score, increment health by 2, set to display the "Perfect!" text
     perfect:
     incq 16(%rdi)
+    # Increase current and ideal acc
+    addq $3, 40(%rdi)
+    addq $3, 48(%rdi)
     # Update the max combo
     movq 16(%rdi), %rax
     movq $3, %rdx
@@ -1184,8 +1221,10 @@ check_for_miss:
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     call handle_health
-    # Reset combo
+    # Increase ideal acc
     movq -8(%rbp), %rdi
+    addq $3, 40(%rdi)
+    # Reset combo
     movq $0, 16(%rdi) 
     jmp note_fulfilled
 
@@ -1216,8 +1255,10 @@ check_for_miss:
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     call handle_health
-    # Reset combo
+    # Increase ideal acc
     movq -8(%rbp), %rdi
+    addq $3, 40(%rdi)
+    # Reset combo
     movq $0, 16(%rdi)
     jmp note_fulfilled
 
@@ -1236,8 +1277,10 @@ check_for_miss:
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
     call handle_health
-    # Reset combo
+    # Increase ideal acc
     movq -8(%rbp), %rdi
+    addq $3, 40(%rdi)
+    # Reset combo
     movq $0, 16(%rdi)
     jmp note_fulfilled
 

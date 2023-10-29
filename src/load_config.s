@@ -31,6 +31,7 @@ txt_string_end: .equ txt_string_len, txt_string_end - txt_string
 # 72(%rdi) highscore file name
 # 80(%rdi) max combo
 # 88(%rdi) highscore
+# 96(%rdi) highest accuracy
 
 load_config:
     # stack:
@@ -99,7 +100,8 @@ load_config:
     # Set the highscore and max combo to zero
     movq -120(%rbp), %rdi
     movq $0, 80(%rdi)
-    movq $0, 80(%rdi)
+    movq $0, 88(%rdi)
+    movq $0, 96(%rdi)
     jmp skip_reading_highscore_file
     highscore_file_exists:
     # Put the pointer to highscore file contents in stack
@@ -112,7 +114,7 @@ load_config:
     call convert_string_to_int
     movq -120(%rbp), %rdi
     movq %rax, 88(%rdi)
-    
+
     # Get max combo and return it
     leaq -128(%rbp), %rdi
     call get_next_variable 
@@ -120,6 +122,14 @@ load_config:
     call convert_string_to_int
     movq -120(%rbp), %rdi
     movq %rax, 80(%rdi)
+
+    # Get highest accuracy and return it
+    leaq -128(%rbp), %rdi
+    call get_next_variable 
+    movq %rax, %rdi
+    call convert_string_to_int
+    movq -120(%rbp), %rdi
+    movq %rax, 96(%rdi)
 
     skip_reading_highscore_file:
     # Read the metadata file and place it into memory and save the pointer in stack
