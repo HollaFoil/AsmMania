@@ -29,6 +29,7 @@ load_config:
     # -24(%rbp) offset
     # -32(%rbp) read_bytes for hit sound file
     # -40(%rbp) pointer to allocated memory for hit sound wav
+    # -48(%rbp) pointer to memory allocated for config file
     pushq %rbp
     movq %rsp, %rbp
     movq %rdi, -8(%rbp)
@@ -43,6 +44,7 @@ load_config:
     call read_file
     testq %rax, %rax
     jz read_failed
+    movq %rax, -48(%rbp)
 
     # Decode the string
     leaq -24(%rbp), %rsi
@@ -62,6 +64,10 @@ load_config:
     movq -32(%rbp), %rsi
     movq -40(%rbp), %rdi
     call set_hit_sound_volume
+
+    # Deallocate memory of config file
+    movq -48(%rbp), %rdi
+    call free
 
     # Return the hit sound file and size
     movq -8(%rbp), %rdi
@@ -105,6 +111,7 @@ load_map:
     # -80(%rbp) highscore file
     # -88(%rbp) highscore file size
     # -96(%rbp) highscore file name
+    # -104(%rbp) temp name pointer
     pushq %rbp
     movq %rsp, %rbp
 
@@ -112,7 +119,7 @@ load_map:
     pushq %rsi
     pushq %rdx
 
-    subq $72, %rsp
+    subq $88, %rsp
 
     # Concatenate the map folder and variant name strings
     pushq $sus_string
@@ -122,6 +129,7 @@ load_map:
     movq $3, %rdi
     call concatenate_string
     addq $24, %rsp
+    movq %rax, -104(%rbp)
 
     # Read the map file and place it into memory and save the pointer in stack
     movq $1, %rcx
@@ -135,6 +143,10 @@ load_map:
     addq $8, %rax
     movq %rax, -56(%rbp)
 
+    # Deallocate memory of string
+    movq -104(%rbp), %rdi
+    call free
+
     # Concatenate the full metadata name
     pushq $metadata_string
     pushq -16(%rbp)
@@ -142,6 +154,7 @@ load_map:
     movq $2, %rdi
     call concatenate_string
     addq $16, %rsp
+    movq %rax, -104(%rbp)
 
     # Read the metadata file and return it
     movq $1, %rcx
@@ -152,6 +165,10 @@ load_map:
     testq %rax, %rax
     jz read_failed
     movq %rax, -32(%rbp)
+
+    # Deallocate memory of string
+    movq -104(%rbp), %rdi
+    call free
     
     # Print the metadata to terminal
     movq -40(%rbp), %rdx # how many bytes to print
@@ -190,6 +207,7 @@ load_map:
     highscore_file_exists:
     # Put the pointer to highscore file contents in stack
     movq %rax, -80(%rbp)
+    movq %rax, -104(%rbp)
 
     # Get max combo and return it
     leaq -80(%rbp), %rdi
@@ -214,6 +232,10 @@ load_map:
     call convert_string_to_int
     movq -8(%rbp), %rdi
     movq %rax, 64(%rdi)
+
+    # Deallocate memory of highscore file
+    movq -104(%rbp), %rdi
+    call free
 
     skip_reading_highscore_file:
     # Concatenate the song file name
