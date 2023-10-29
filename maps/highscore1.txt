@@ -1,3 +1,0 @@
-Highscore:49912
-Max combo:80
-Highest accurracy:75
