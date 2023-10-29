@@ -1184,7 +1184,7 @@ draw_highscore:
 ret
 
 /*
-Draws the highscore string
+Draws the choices when selecting map
 (%rdi) - gc struct
 %rsi - choices
 %rdx - num of choices
@@ -1199,6 +1199,7 @@ draw_choices:
     pushq 16(%rdi) # di -24(%rbp)
     subq $8, %rsp
 
+    # Iterate through every choice
     movq $0, %r8
     loop_choice:
         pushq %r8
@@ -1206,6 +1207,7 @@ draw_choices:
         pushq %rsi
         pushq %rcx
         
+        # Check whether this choice is the currently selected one. If so, draw it in green
         cmpq %r8, %rcx
         je not_selected
         jmp selected
@@ -1216,12 +1218,13 @@ draw_choices:
         call XSetForeground@PLT
         jmp end_color_selection
         not_selected:
-        movq $0x00ff00, %rdx	# White
+        movq $0x00ff00, %rdx	# Green
         movq -8(%rbp), %rsi	
         movq -24(%rbp), %rdi
         call XSetForeground@PLT
         end_color_selection:
 
+        # Refresh variables in case of changes
         popq %rcx
         popq %rsi
         popq %rdx
@@ -1232,9 +1235,11 @@ draw_choices:
         pushq %rsi
         pushq %rcx
 
+        # Get the string length of the choice
         movq (%rsi, %r8, 8), %rdi
         call strlen
 
+        # Refresh variables in case of changes
         popq %rcx
         popq %rsi
         popq %rdx
@@ -1245,16 +1250,19 @@ draw_choices:
         pushq %rsi
         pushq %rcx
 
+        # Load variables for drawing
         movq (%rsi, %r8, 8), %r9
         pushq %rax
         pushq %rax
 
+        # Choices will be offset by 16 pixels in height from each other
         movq %r8, %rax
         movq $16, %rdi
         pushq %rdx
         mulq %rdi
         popq %rdx
 
+        # Draw the choice
         movq %rax, %r8
         addq $300, %r8
         movq $200, %rcx
@@ -1275,9 +1283,6 @@ draw_choices:
         je end_loop_choice
         jmp loop_choice
     end_loop_choice:
-    # Set the colour
-
-    # Draw the score
 
     movq %rbp, %rsp
     popq %rbp
