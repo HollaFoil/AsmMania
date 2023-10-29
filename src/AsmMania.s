@@ -736,7 +736,7 @@ handle_hit:
             subq %rax, %rdx
 
             # Check if object is within threshold
-            cmpq $280, %r12
+            cmpq $140, %r12
             jg end_find_loop
 
             cmpq $-100, %r12
@@ -987,11 +987,11 @@ handle_note_press:
     pushq %rdi
 
     # Determine the accuracy based on delay
-    cmpq $40, %rsi
+    cmpq $30, %rsi
     jle perfect
-    cmpq $80, %rsi
+    cmpq $60, %rsi
     jle nice
-    cmpq $120, %rsi
+    cmpq $100, %rsi
     jle ok
 
     # Missed: reset combo, lower health, set to display the "Missed" text
@@ -1006,7 +1006,7 @@ handle_note_press:
     # Lower the health
     movq -8(%rbp), %rdi
     leaq 24(%rdi), %rdi
-    movq $-3, %rsi
+    movq $-6, %rsi
     call handle_health
 
     jmp end_set_handle_note_press
@@ -1030,6 +1030,11 @@ handle_note_press:
     movq -8(%rbp), %rdi
     leaq 32(%rdi), %rdi
     call set_text_status
+
+    movq -8(%rbp), %rdi
+    leaq 24(%rdi), %rdi
+    movq $-1, %rsi
+    call handle_health
 
     jmp end_set_handle_note_press
 
