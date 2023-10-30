@@ -1,6 +1,6 @@
 Song offset:240
 Hitsound filepath:hitSound.wav
-Hitsound volume 0-100:25
+Hitsound volume 0-100:33
 
 Please put variables directly after : and end directly with a newline
 Don't mess with the first three lines in other ways

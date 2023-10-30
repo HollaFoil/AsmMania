@@ -254,7 +254,6 @@ start_select_map:
     movq $1, %rcx
     call read_file
     
-    # Parse the file and split it into map variants and file names
     movq %rax, %rdi
     movq -152(%rbp), %rsi
     leaq -160(%rbp), %rdx
@@ -262,7 +261,6 @@ start_select_map:
     call load_variant_data
     movq %rax, %r13
 
-    # Clear the screen
     movq -40(%rbp), %rdi
     movq -48(%rbp), %rsi
     movq $0, %rdx
@@ -379,11 +377,8 @@ start_select_map:
     movq (%rdi, %r15, 8), %rdi
     movq %rdi, %r15
 
-    # Get the directory path of our choice
     movq -136(%rbp), %rdi
     call load_map_directory_path
-
-    # Save strings to return
     movq -200(%rbp), %r8
     movq -208(%rbp), %r9
     movq %rax, (%r8)
@@ -417,7 +412,6 @@ load_variant_data:
     pushq %rdx #-56
     pushq %rcx #-64
 
-    # Counts the number of colons in the file, which equates to the number of map variants
     movq $0, %r8
     movq $0, %r10
     count_colons:
@@ -436,7 +430,6 @@ load_variant_data:
     end_count_colons:
     movq %r10, %r12 # Number of maps
 
-    # Get the number of bytes to store pointers to each map string (map amount multiplied by 8)
     movq %r10, %rax
     movq $8, %rdi
     mulq %rdi
@@ -450,12 +443,11 @@ load_variant_data:
     call malloc@PLT
     pushq %rax #-80: map file
 
-    # Parse the file
+
     movq $0, %r13
     movq $0, %r15
     movq -40(%rbp), %r14
     parse_line:
-        # Find first colon
         movq %r14, %rdi
         movq $58, %rsi
         call strchr@PLT
@@ -463,7 +455,6 @@ load_variant_data:
         subq %r14, %r15
         addq $1, %r15
 
-        # Allocate memory to copy string
         movq %r15, %rdi
         call malloc@PLT
         movq -72(%rbp), %rsi
@@ -472,21 +463,18 @@ load_variant_data:
         addq %r15, %rax
         movb $0, -1(%rax)
 
-        # Move the string to the needed location in the array
         movq (%rsi, %r13, 8), %rdi
         movq %r14, %rsi
         movq %r15, %rdx
         decq %rdx
         call memcpy@PLT
 
-        # Move file pointer to after the colon character
         movq %r14, %rdi
         movq $58, %rsi
         call strchr@PLT
         movq %rax, %r14
         incq %r14
 
-        # Find first new line
         movq %r14, %rdi
         movq $10, %rsi
         call strchr@PLT
@@ -494,7 +482,6 @@ load_variant_data:
         subq %r14, %r15
         addq $1, %r15
 
-        # Allocate memory to copy string
         movq %r15, %rdi
         call malloc@PLT
         movq -80(%rbp), %rsi
@@ -503,14 +490,12 @@ load_variant_data:
         addq %r15, %rax
         movb $0, -1(%rax)
         
-        # Move the string to the needed location in the array
         movq (%rsi, %r13, 8), %rdi
         movq %r14, %rsi
         movq %r15, %rdx
         decq %rdx
         call memcpy@PLT
 
-        # Move file pointer to after the new line character
         movq %r14, %rdi
         movq $10, %rsi
         call strchr@PLT
@@ -523,7 +508,6 @@ load_variant_data:
         jmp parse_line
     end_parse_line:
 
-    # Save results and return
     movq %r12, %rax
     movq -56(%rbp), %rdx
     movq -64(%rbp), %rcx
@@ -542,7 +526,6 @@ load_variant_data:
 ret
 
 /*
-String operations to get the full file path to the directory
 RDI - chosen map directory name
 */
 load_map_directory_path:
@@ -552,7 +535,6 @@ load_map_directory_path:
     pushq %r13 # "/"
     pushq %r14 # Chosen map length
     pushq %r15
-
 
     movq %rdi, %r12
     call strlen
@@ -573,7 +555,7 @@ load_map_directory_path:
     call strcpy
 
     movq %r13, %rdi
-    addq $7, %rdi
+    addq $7, %rdi #maps folder name is 9 chars long
     addq %r14, %rdi
     movq $slash, %rsi
     call strcpy
@@ -593,7 +575,6 @@ load_map_directory_path:
 ret
 
 /*
-String operations to get the full file path to the maps list inside the directory name
 RDI - chosen map directory name
 */
 load_map_variants_txt:

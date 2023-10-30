@@ -56,6 +56,8 @@ format: .asciz "%ld\n"
 .global draw_choices
 .global draw_max_accuracy
 .global draw_current_accuracy
+.global draw_cleared_text
+.global draw_lost_text
 
 /*
 -8rbp %r12
@@ -521,7 +523,6 @@ draw_play_area:
     popq %r14
     popq %r13
     popq %r12
-    movq %rbp, %rsp
     popq %rbp
 ret
 
@@ -753,7 +754,6 @@ draw_hit_object:
     popq %r14
     popq %r13
     popq %r12
-    movq %rbp, %rsp
     popq %rbp
 ret
 
@@ -794,6 +794,76 @@ ok_end:
 missed: .ascii "Missed"
 missed_end:
 .equ missed_length, missed_end - missed
+lost_message: .ascii "You lost!"
+lost_end:
+.equ lost_length, lost_end - lost_message
+cleared_message: .ascii "You won!"
+cleared_end:
+.equ cleared_length, cleared_end - cleared_message
+
+/*
+Draws the lost message
+%rdi - gc struct
+*/
+draw_lost_text:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    pushq (%rdi) # gc -8(%rbp)
+    pushq 8(%rdi) # window -16(%rbp)
+    pushq 16(%rdi) # display -24(%rbp)
+
+    movq $0xff0f0f, %rdx	# Red
+    movq -8(%rbp), %rsi	
+    movq -24(%rbp), %rdi
+	call XSetForeground@PLT
+
+    pushq $lost_length
+    movq $lost_message, %r9
+    movq $LANE_HEIGHT, %r8
+    subq $190, %r8
+    movq $500, %rcx
+    movq -8(%rbp), %rdx
+    movq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call XDrawImageString@PLT
+    jmp dont_draw_text
+
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
+/*
+Draws the clear message
+%rdi - gc struct
+*/
+draw_cleared_text:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    pushq (%rdi) # gc -8(%rbp)
+    pushq 8(%rdi) # window -16(%rbp)
+    pushq 16(%rdi) # display -24(%rbp)
+
+    movq $0xffffff, %rdx	# White
+    movq -8(%rbp), %rsi	
+    movq -24(%rbp), %rdi
+	call XSetForeground@PLT
+
+    pushq $cleared_length
+    movq $cleared_message, %r9
+    movq $LANE_HEIGHT, %r8
+    subq $190, %r8
+    movq $500, %rcx
+    movq -8(%rbp), %rdx
+    movq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call XDrawImageString@PLT
+    jmp dont_draw_text
+
+    movq %rbp, %rsp
+    popq %rbp
+    ret
 
 /*
 Draws the status message
@@ -1184,7 +1254,7 @@ draw_highscore:
 ret
 
 /*
-Draws the choices when selecting map
+Draws the highscore string
 (%rdi) - gc struct
 %rsi - choices
 %rdx - num of choices
@@ -1199,7 +1269,6 @@ draw_choices:
     pushq 16(%rdi) # di -24(%rbp)
     subq $8, %rsp
 
-    # Iterate through every choice
     movq $0, %r8
     loop_choice:
         pushq %r8
@@ -1207,7 +1276,6 @@ draw_choices:
         pushq %rsi
         pushq %rcx
         
-        # Check whether this choice is the currently selected one. If so, draw it in green
         cmpq %r8, %rcx
         je not_selected
         jmp selected
@@ -1218,13 +1286,12 @@ draw_choices:
         call XSetForeground@PLT
         jmp end_color_selection
         not_selected:
-        movq $0x00ff00, %rdx	# Green
+        movq $0x00ff00, %rdx	# White
         movq -8(%rbp), %rsi	
         movq -24(%rbp), %rdi
         call XSetForeground@PLT
         end_color_selection:
 
-        # Refresh variables in case of changes
         popq %rcx
         popq %rsi
         popq %rdx
@@ -1235,11 +1302,9 @@ draw_choices:
         pushq %rsi
         pushq %rcx
 
-        # Get the string length of the choice
         movq (%rsi, %r8, 8), %rdi
         call strlen
 
-        # Refresh variables in case of changes
         popq %rcx
         popq %rsi
         popq %rdx
@@ -1250,19 +1315,16 @@ draw_choices:
         pushq %rsi
         pushq %rcx
 
-        # Load variables for drawing
         movq (%rsi, %r8, 8), %r9
         pushq %rax
         pushq %rax
 
-        # Choices will be offset by 16 pixels in height from each other
         movq %r8, %rax
         movq $16, %rdi
         pushq %rdx
         mulq %rdi
         popq %rdx
 
-        # Draw the choice
         movq %rax, %r8
         addq $300, %r8
         movq $200, %rcx
@@ -1283,6 +1345,9 @@ draw_choices:
         je end_loop_choice
         jmp loop_choice
     end_loop_choice:
+    # Set the colour
+
+    # Draw the score
 
     movq %rbp, %rsp
     popq %rbp
