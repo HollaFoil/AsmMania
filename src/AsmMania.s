@@ -1,5 +1,9 @@
 .global main
 
+.data
+main_stack: .quad
+
+.text
 format: .asciz "%ld\n"
 format2: .asciz "%ld %ld\n"
 format3: .asciz "%ld %ld %ld\n"
@@ -36,7 +40,8 @@ map_variant: .asciz "map1"
 
 -336(%rpb) = pointer to hit sound
 -344(%rbp) = size of hit sound in bytes
--352(%rbp) = song offset
+-352(%rbp) = current song offset
+-360(%rbp) = song offset
 
 -368(%rbp) = best accurracy
 -376(%rbp) = all time highscore
@@ -100,6 +105,9 @@ player performance struct
 main:
     pushq %rbp
     movq %rsp, %rbp
+    # Make base pointer global
+    movq $main_stack, %rdi
+    movq %rsp, (%rdi)
 
     subq $704, %rsp
 
@@ -110,6 +118,17 @@ main:
     movq -56(%rbp), %rsi
     movq -64(%rbp), %rdx
     call init_window
+
+    # Load config.txt file
+    leaq -344(%rbp), %rdi
+    call load_config
+    movq %rax, -352(%rbp)
+    movq %rax, -360(%rbp)
+
+    go_to_menu:
+
+    movq -360(%rbp), %rax
+    movq %rax, -352(%rbp)
 
     # Select map menu
     leaq -48(%rbp), %rdi
@@ -150,11 +169,6 @@ main:
     leaq -320(%rbp), %rdi
     leaq -328(%rbp), %rsi
     call create_pcm_handle
-
-    # Load config.txt file
-    leaq -344(%rbp), %rdi
-    call load_config
-    movq %rax, -352(%rbp)
 
     # Load map
     movq -664(%rbp), %rdx
@@ -454,6 +468,12 @@ main:
         divq %rcx
         movq %rax, %r14
 
+        movq -432(%rbp), %r15
+        cmpq %r15, -496(%rbp)
+        jl not_outside_bounds
+        subq $4, -496(%rbp)
+
+        not_outside_bounds:
         # Draw all the hitobjects that are currently in view
         movq -496(%rbp), %r15
         hit_obj_loop:
@@ -491,7 +511,7 @@ main:
             movq $0, %rdx
             movl 8(%rdi, %r15, 8), %edx
             # Get the time offset since the start of the song
-            subq %r14, %rdx
+            subl %r14d, %edx
 
             # Check if the hit object is a slider or a regular object
             movq $0, %rcx
@@ -502,23 +522,23 @@ main:
             # Since this is a slider, we also need to get the slider end time
             movl 12(%rdi, %r15, 8), %ecx
             # Get slider end time since start of song
-            subq %r14, %rcx
+            subl %r14d, %ecx
             # Check if slider is below the screen
-            cmpq $-2000, %rcx
+            cmpl $-2000, %ecx
             jg keep_obj
             addq $2, -496(%rbp)
             jmp next_obj
 
             regular_obj:
             # Check if object is below the screen, in which case we never want to render this object again
-            cmpq $-2000, %rdx
+            cmpl $-2000, %edx
             jg keep_obj
             addq $2, -496(%rbp)
             jmp next_obj
 
             keep_obj:
             # Check if object is above the screen, in which case we stop rendering objects
-            cmpq $2000, %rdx
+            cmpl $2000, %edx
             jg end_hit_obj_drawing
 
             # Check whether we've missed any objects
@@ -564,24 +584,8 @@ main:
 
     # After song has finished, exit the program
     song_end:
-    # Print map cleared message in the terminal
-    movq $map_cleared_message, %rdi
-    movq $0, %rax
-    call printf
 
-    # Print final score
-    movq -608(%rbp), %rsi
-    movq $score_message, %rdi
-    movq $0, %rax
-    call printf
-
-    # Print max combo
-    movq -600(%rbp), %rsi
-    movq $final_combo_message, %rdi
-    movq $0, %rax
-    call printf
-
-    # Update the highscore and max combo
+    # Update the highscore, max combo and accuracy
     movq -560(%rbp), %rax
     movq $100, %rdi
     mulq %rdi
@@ -590,28 +594,114 @@ main:
     movq -368(%rbp), %rcx
     cmpq %rcx, %rax
     cmovgq %rax, %rcx
+    movq %rcx, -368(%rbp)
     movq -600(%rbp), %rdx
     movq -384(%rbp), %r8
     cmpq %r8, %rdx
     cmovlq %r8, %rdx
+    movq %rdx, -384(%rbp)
     movq -608(%rbp), %rsi
     movq -376(%rbp), %r8
     cmpq %r8, %rsi
     cmovlq %r8, %rsi
+    movq %rsi, -376(%rbp)
     movq -392(%rbp), %rdi
     call save_highscore
+
+    # Win flag
+    subq $8, %rsp
+    pushq $1
 
     end:
     # Play the remaining samples in the buffer, close the PCM handle and exit
     movq -320(%rbp), %rdi
-    call snd_pcm_drain@PLT
+    call snd_pcm_drop@PLT
     movq -320(%rbp), %rdi
     call snd_pcm_close@PLT
 
-    movq %rbp, %rsp
-    popq %rbp
-    movq $0, %rdi
-    call exit
+    # Clear entire window to color black
+    movq -32(%rbp), %rdi
+    movq -40(%rbp), %rsi
+    movq $0, %rdx
+    movq $0, %rcx
+    movq -56(%rbp), %r8
+    movq -64(%rbp), %r9
+    subq $8, %rsp
+    pushq $1
+    call XClearArea@PLT
+    addq $16, %rsp
+
+    # Draw various text items
+    leaq -576(%rbp), %rsi
+    leaq -48(%rbp), %rdi
+    call draw_status_text
+
+    movq -592(%rbp), %rsi
+    leaq -48(%rbp), %rdi
+    call draw_current_combo
+
+    movq -608(%rbp), %rsi
+    leaq -48(%rbp), %rdi
+    call draw_current_score
+
+    movq -376(%rbp), %rsi
+    leaq -48(%rbp), %rdi
+    call draw_highscore
+
+    movq -384(%rbp), %rsi
+    leaq -48(%rbp), %rdi
+    call draw_max_combo
+
+    movq -560(%rbp), %rax
+    movq $100, %rdi
+    mulq %rdi
+    movq -568(%rbp), %rdi
+    divq %rdi
+    movq %rax, %rsi
+    leaq -48(%rbp), %rdi
+    call draw_current_accuracy
+
+    movq -368(%rbp), %rsi
+    leaq -48(%rbp), %rdi
+    call draw_max_accuracy
+
+    movq -400(%rbp), %rdx
+    movq -408(%rbp), %rsi
+    leaq -48(%rbp), %rdi
+    call draw_metadata
+
+    # Check win/lost flag
+    popq %r10
+    addq $8, %rsp
+    cmpq $1, %r10
+    je draw_win
+
+    # Display lost text
+    leaq -48(%rbp), %rdi
+    call draw_lost_text
+    jmp drew
+
+    draw_win:
+    # Display won text
+    leaq -48(%rbp), %rdi
+    call draw_cleared_text
+
+    drew:
+    # Deallocate memory
+    movq -440(%rbp), %rdi
+    subq $8, %rdi
+    call free
+
+    movq -424(%rbp), %rdi
+    call free
+
+    movq -408(%rbp), %rdi
+    call free
+
+    movq -392(%rbp), %rdi
+    call free
+
+    jmp go_to_menu
 
 
 /*
@@ -725,7 +815,7 @@ handle_hit:
     pushq %r15
 
     # Store all subroutine arguments on stack
-    subq $64, %rsp
+    subq $96, %rsp
     movq %rdi, -40(%rbp)
     movq %rsi, -48(%rbp)
     movq %rdx, -56(%rbp)
@@ -734,7 +824,6 @@ handle_hit:
     movq %r9, -80(%rbp)
     movq 16(%rbp), %rax
     movq %rax, -88(%rbp)
-
     # Double the total hit obj
     shlq %r10
     movq %r10, -96(%rbp)
@@ -822,7 +911,7 @@ handle_hit:
         jmp find_closest_obj_loop
     end_find_closest_obj_loop:
     
-    addq $64, %rsp
+    leaq -32(%rbp), %rsp
     popq %r15
     popq %r14
     popq %r13
@@ -1175,45 +1264,17 @@ handle_health:
     ret
 
 /*
-Prints the lost_message, final score, max combo and exits the program
-(%rdi) - health address
+Set the dead flag and go to end
 */
 dead:
-    subq $8, %rsp
-    pushq %rdi
+    # Reset base and stack pointers
+    movq main_stack, %rbp
+    movq %rbp, %rsp
+    subq $712, %rsp
+    # Lost flag
+    pushq $-1
 
-    # Print the messages
-    movq $lost_message, %rdi
-    movq $0, %rax
-    call printf
-
-    popq %rdi
-    pushq %rdi
-    movq -24(%rdi), %rsi
-    movq $score_message, %rdi
-    movq $0, %rax
-    call printf
-    
-    popq %rdi
-    pushq %rdi
-    movq -16(%rdi), %rsi
-    movq $final_combo_message, %rdi
-    movq $0, %rax
-    call printf
-
-    # Play the remaining samples in the buffer
-    popq %rdi
-    pushq %rdi
-    movq 264(%rdi), %rdi
-    call snd_pcm_drain@PLT
-    # Close the PCM handle
-    popq %rdi
-    pushq %rdi
-    movq 264(%rdi), %rdi
-    call snd_pcm_close@PLT
-
-    movq $0, %rdi
-    call exit
+    jmp end
 
 /*
 # Checks if a note below a certain treshold hasn't been hit and triggers a miss in that case
@@ -1243,7 +1304,7 @@ check_for_miss:
     cmpw $1, 2(%rdi)
     je note_fulfilled
     # Check if it was missed
-    cmpq $-100, %rsi
+    cmpl $-100, %esi
     jge note_fulfilled
 
     # Trigger a miss
@@ -1276,7 +1337,7 @@ check_for_miss:
     cmpw $1, 2(%rdi) 
     je note_fulfilled
     # Check if it was missed
-    cmpq $-100, %rsi 
+    cmpl $-100, %esi 
     jge note_fulfilled
 
     # Trigger a miss
@@ -1299,7 +1360,7 @@ check_for_miss:
     slider_start_fulfilled:
     cmpw $2, 2(%rdi) # check if it was missed and accounted for already
     je note_fulfilled
-    cmpq $-100, %rdx # check if it was missed
+    cmpl $-100, %edx # check if it was missed
     jge note_fulfilled
 
     # Trigger a miss

@@ -56,6 +56,8 @@ format: .asciz "%ld\n"
 .global draw_choices
 .global draw_max_accuracy
 .global draw_current_accuracy
+.global draw_cleared_text
+.global draw_lost_text
 
 /*
 -8rbp %r12
@@ -521,7 +523,6 @@ draw_play_area:
     popq %r14
     popq %r13
     popq %r12
-    movq %rbp, %rsp
     popq %rbp
 ret
 
@@ -753,7 +754,6 @@ draw_hit_object:
     popq %r14
     popq %r13
     popq %r12
-    movq %rbp, %rsp
     popq %rbp
 ret
 
@@ -794,6 +794,76 @@ ok_end:
 missed: .ascii "Missed"
 missed_end:
 .equ missed_length, missed_end - missed
+lost_message: .ascii "You lost!"
+lost_end:
+.equ lost_length, lost_end - lost_message
+cleared_message: .ascii "You won!"
+cleared_end:
+.equ cleared_length, cleared_end - cleared_message
+
+/*
+Draws the lost message
+%rdi - gc struct
+*/
+draw_lost_text:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    pushq (%rdi) # gc -8(%rbp)
+    pushq 8(%rdi) # window -16(%rbp)
+    pushq 16(%rdi) # display -24(%rbp)
+
+    movq $0xff0f0f, %rdx	# Red
+    movq -8(%rbp), %rsi	
+    movq -24(%rbp), %rdi
+	call XSetForeground@PLT
+
+    pushq $lost_length
+    movq $lost_message, %r9
+    movq $LANE_HEIGHT, %r8
+    subq $190, %r8
+    movq $500, %rcx
+    movq -8(%rbp), %rdx
+    movq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call XDrawImageString@PLT
+    jmp dont_draw_text
+
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
+/*
+Draws the clear message
+%rdi - gc struct
+*/
+draw_cleared_text:
+    pushq %rbp
+    movq %rsp, %rbp
+
+    pushq (%rdi) # gc -8(%rbp)
+    pushq 8(%rdi) # window -16(%rbp)
+    pushq 16(%rdi) # display -24(%rbp)
+
+    movq $0xffffff, %rdx	# White
+    movq -8(%rbp), %rsi	
+    movq -24(%rbp), %rdi
+	call XSetForeground@PLT
+
+    pushq $cleared_length
+    movq $cleared_message, %r9
+    movq $LANE_HEIGHT, %r8
+    subq $190, %r8
+    movq $500, %rcx
+    movq -8(%rbp), %rdx
+    movq -16(%rbp), %rsi
+    movq -24(%rbp), %rdi
+    call XDrawImageString@PLT
+    jmp dont_draw_text
+
+    movq %rbp, %rsp
+    popq %rbp
+    ret
 
 /*
 Draws the status message
